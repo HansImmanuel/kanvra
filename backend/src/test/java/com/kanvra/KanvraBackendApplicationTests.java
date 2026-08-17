@@ -1,13 +1,13 @@
 package com.kanvra;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class KanvraBackendApplicationTests {
+class KanvraBackendApplicationTests extends AbstractIntegrationTest {
 
-	@Test
-	void contextLoads() {
-	}
-
+    @Test
+    void contextLoads() {
+        // Verifies the full application context, Flyway migration, and entity/schema
+        // consistency (ddl-auto=validate) against a real PostgreSQL container.
+    }
 }
+
