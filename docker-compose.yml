@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: kanvra-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kanvra
+      POSTGRES_USER: kanvra
+      POSTGRES_PASSWORD: kanvra_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - kanvra-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  kanvra-postgres-data:
