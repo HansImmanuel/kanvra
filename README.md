@@ -32,7 +32,7 @@ docker compose up -d
 This starts:
 
 - **PostgreSQL 17** on `localhost:5432` (db/user/pass = `kanvra` / `kanvra` / `kanvra_dev`)
-- **Apache Kafka 3.9 (KRaft)** on `localhost:9092`
+- **Apache Kafka 3.9 (KRaft)** — dual listeners: `localhost:29092` (EXTERNAL, for host tools/apps) and `kafka:9092` (INTERNAL, for in-network containers)
 - **Kafka UI** on `http://localhost:8081`
 
 ### 2. Run the backend
@@ -61,7 +61,7 @@ Sensitive/non-default settings are supplied through environment variables (see `
 | `KANVRA_DB_URL`               | `jdbc:postgresql://localhost:5432/kanvra`      | JDBC URL                      |
 | `KANVRA_DB_USERNAME`          | `kanvra`                                       | DB user                       |
 | `KANVRA_DB_PASSWORD`          | `kanvra_dev`                                   | DB password                   |
-| `KANVRA_KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092`                            | Kafka brokers                 |
+| `KANVRA_KAFKA_BOOTSTRAP_SERVERS` | `localhost:29092`                            | Kafka brokers (EXTERNAL listener; `9092` is the in-network listener) |
 | `KANVRA_JWT_SECRET`           | (dev default)                                  | HMAC secret for JWT signing   |
 | `KANVRA_CORS_ORIGINS`         | `http://localhost:3000`                        | Allowed frontend origins      |
 
@@ -69,7 +69,9 @@ Sensitive/non-default settings are supplied through environment variables (see `
 
 - **Dead-letter topic (DLT)** for failed consumer messages is deferred — see `TECH_DOC.md` §20. Consumer
   failures are logged and retried via Kafka's built-in retry; a DLT will be added once consumers are proven stable.
-- No server-side token blacklist for auth; exposure is bounded by short access-token expiry — see `SPEC.md` §3.
+- **Access tokens are not revocable** — exposure is bounded by their short (~30 min) expiry. Refresh tokens *are*
+  revocable server-side since Sprint 2: rotation revokes the old token, reuse detection revokes the family, and
+  logout revokes all active refresh tokens (see `SPEC.md` §3.4/§3.5).
 
 ## Repository layout
 

@@ -35,9 +35,29 @@ class JwtServiceTest {
     }
 
     @Test
+    void refreshTokenCarriesJtiAndRoundTripsUser() {
+        AuthenticatedUser user = new AuthenticatedUser(1L, "A", "a@example.com");
+
+        String refresh = jwtService.createRefreshToken(user, "refresh-jti-123");
+
+        AuthenticatedUser parsed = jwtService.parse(refresh, JwtTokenType.REFRESH);
+        assertThat(parsed.id()).isEqualTo(1L);
+        assertThat(jwtService.extractJti(refresh, JwtTokenType.REFRESH)).isEqualTo("refresh-jti-123");
+    }
+
+    @Test
+    void accessTokenHasNoJti() {
+        AuthenticatedUser user = new AuthenticatedUser(1L, "A", "a@example.com");
+        String access = jwtService.createAccessToken(user);
+
+        assertThatThrownBy(() -> jwtService.extractJti(access, JwtTokenType.ACCESS))
+                .isInstanceOf(JwtException.class);
+    }
+
+    @Test
     void refreshTokenCannotBeUsedAsAccessToken() {
         AuthenticatedUser user = new AuthenticatedUser(1L, "A", "a@example.com");
-        String refresh = jwtService.createRefreshToken(user);
+        String refresh = jwtService.createRefreshToken(user, "jti-1");
 
         assertThatThrownBy(() -> jwtService.parse(refresh, JwtTokenType.ACCESS))
                 .isInstanceOf(JwtException.class);

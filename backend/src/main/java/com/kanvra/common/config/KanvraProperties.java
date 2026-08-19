@@ -18,8 +18,8 @@ public class KanvraProperties {
 
     private Jwt jwt = new Jwt();
     private Cookies cookies = new Cookies();
+    private Auth auth = new Auth();
     private List<String> corsOrigins = new ArrayList<>(List.of("http://localhost:3000"));
-    private int authRateLimitPerMinute = 5;
 
     public Jwt getJwt() {
         return jwt;
@@ -37,6 +37,14 @@ public class KanvraProperties {
         this.cookies = cookies;
     }
 
+    public Auth getAuth() {
+        return auth;
+    }
+
+    public void setAuth(Auth auth) {
+        this.auth = auth;
+    }
+
     public List<String> getCorsOrigins() {
         return corsOrigins;
     }
@@ -45,17 +53,34 @@ public class KanvraProperties {
         this.corsOrigins = corsOrigins;
     }
 
-    public int getAuthRateLimitPerMinute() {
-        return authRateLimitPerMinute;
-    }
+    /** Auth endpoint settings (rate limiting, trusted proxies). */
+    public static class Auth {
+        private int rateLimitPerMinute = 5;
+        private List<String> trustedProxies = new ArrayList<>();
 
-    public void setAuthRateLimitPerMinute(int authRateLimitPerMinute) {
-        this.authRateLimitPerMinute = authRateLimitPerMinute;
+        public int getRateLimitPerMinute() {
+            return rateLimitPerMinute;
+        }
+
+        public void setRateLimitPerMinute(int rateLimitPerMinute) {
+            this.rateLimitPerMinute = rateLimitPerMinute;
+        }
+
+        public List<String> getTrustedProxies() {
+            return trustedProxies;
+        }
+
+        public void setTrustedProxies(List<String> trustedProxies) {
+            this.trustedProxies = trustedProxies;
+        }
     }
 
     /** JWT signing configuration. */
     public static class Jwt {
-        private String secret = "dev-only-change-me-in-prod-base64-secret";
+
+        public static final String DEFAULT_DEV_SECRET = "dev-only-change-me-in-prod-base64-secret";
+
+        private String secret = DEFAULT_DEV_SECRET;
         private Duration accessTokenTtl = Duration.ofMinutes(30);
         private Duration refreshTokenTtl = Duration.ofDays(7);
 

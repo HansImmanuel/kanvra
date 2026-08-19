@@ -32,24 +32,26 @@ public class JwtService {
     }
 
     public String createAccessToken(AuthenticatedUser user) {
-        return createToken(user, JwtTokenType.ACCESS, accessTokenTtl);
+        return createToken(user, JwtTokenType.ACCESS, accessTokenTtl, null);
     }
 
-    public String createRefreshToken(AuthenticatedUser user) {
-        return createToken(user, JwtTokenType.REFRESH, refreshTokenTtl);
+    public String createRefreshToken(AuthenticatedUser user, String jti) {
+        return createToken(user, JwtTokenType.REFRESH, refreshTokenTtl, jti);
     }
 
-    private String createToken(AuthenticatedUser user, JwtTokenType type, Duration ttl) {
+    private String createToken(AuthenticatedUser user, JwtTokenType type, Duration ttl, String jti) {
         Instant now = Instant.now();
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(String.valueOf(user.id()))
                 .claim("name", user.name())
                 .claim("email", user.email())
                 .claim("typ", type.name())
                 .issuedAt(Date.from(now))
-                .expiration(Date.from(now.plus(ttl)))
-                .signWith(key)
-                .compact();
+                .expiration(Date.from(now.plus(ttl)));
+        if (jti != null) {
+            builder.id(jti);
+        }
+        return builder.signWith(key).compact();
     }
 
     /**
@@ -58,14 +60,8 @@ public class JwtService {
      * @throws JwtException if the token is invalid, expired, or of the wrong type
      */
     public AuthenticatedUser parse(String token, JwtTokenType expectedType) {
-        Claims claims = Jwts.parser()
-                .verifyWith(key)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-
-        String type = claims.get("typ", String.class);
-        if (!expectedType.name().equals(type)) {
+        Claims claims = parseClaims(token);
+        if (!expectedType.name().equals(claims.get("typ", String.class))) {
             throw new JwtException("Token type mismatch");
         }
 
@@ -73,5 +69,31 @@ public class JwtService {
                 Long.parseLong(claims.getSubject()),
                 claims.get("name", String.class),
                 claims.get("email", String.class));
+    }
+
+    /**
+     * Extracts the {@code jti} claim from a token of the expected type. Used by
+     * the refresh flow to look up the persisted {@code refresh_tokens} row.
+     *
+     * @throws JwtException if the token is invalid, of the wrong type, or has no jti
+     */
+    public String extractJti(String token, JwtTokenType expectedType) {
+        Claims claims = parseClaims(token);
+        if (!expectedType.name().equals(claims.get("typ", String.class))) {
+            throw new JwtException("Token type mismatch");
+        }
+        String jti = claims.getId();
+        if (jti == null) {
+            throw new JwtException("Token has no jti claim");
+        }
+        return jti;
+    }
+
+    private Claims parseClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 }
