@@ -89,6 +89,9 @@ public class ActivityConsumer {
             case "task.assigned" -> actorPrefix + "assigned task '" + payload.path("taskTitle").asText("") + "'";
             case "task.unassigned" -> actorPrefix + "unassigned task '" + payload.path("taskTitle").asText("") + "'";
             case "task.completed" -> actorPrefix + "completed task '" + payload.path("taskTitle").asText("") + "'";
+            case "comment.created" -> actorPrefix + "commented on task '" + payload.path("taskTitle").asText("") + "'";
+            case "comment.updated" -> actorPrefix + "edited a comment on task '" + payload.path("taskTitle").asText("") + "'";
+            case "comment.deleted" -> actorPrefix + "removed a comment from task '" + payload.path("taskTitle").asText("") + "'";
             case "project.created" -> actorPrefix + "created project '" + payload.path("name").asText("") + "'";
             case "project.archived" -> actorPrefix + "archived project '" + payload.path("name").asText("") + "'";
             case "project.member_added" -> actorPrefix + "added a member to the project";

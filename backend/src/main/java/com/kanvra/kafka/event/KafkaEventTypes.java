@@ -17,6 +17,10 @@ public final class KafkaEventTypes {
     public static final String PROJECT_MEMBER_ADDED = "project.member_added";
     public static final String PROJECT_ARCHIVED = "project.archived";
 
+    public static final String COMMENT_CREATED = "comment.created";
+    public static final String COMMENT_UPDATED = "comment.updated";
+    public static final String COMMENT_DELETED = "comment.deleted";
+
     public static final String AGGREGATE_TASK = "task";
     public static final String AGGREGATE_PROJECT = "project";
     public static final String AGGREGATE_COMMENT = "comment";

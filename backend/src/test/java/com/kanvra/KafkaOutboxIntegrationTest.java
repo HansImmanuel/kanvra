@@ -1,5 +1,6 @@
 package com.kanvra;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kanvra.activity.model.Activity;
 import com.kanvra.activity.repository.ActivityRepository;
 import com.kanvra.kafka.consumer.ActivityConsumer;
@@ -17,6 +18,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.utility.DockerImageName;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -100,6 +102,67 @@ class KafkaOutboxIntegrationTest extends AbstractIntegrationTest {
                 .filter(a -> a.getEventId() != null && eventId.equals(a.getEventId().toString()))
                 .count();
         assertThat(rowsForEvent).isEqualTo(1);
+    }
+
+    @Test
+    void commentEventFlowsThroughKafkaToActivityFeed() throws Exception {
+        String token = register("comment-kafka@example.com");
+
+        MvcResult projectResult = mockMvc.perform(post("/api/v1/projects")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Comments E2E\"}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+        long projectId = new ObjectMapper().readTree(projectResult.getResponse().getContentAsString())
+                .get("id").asLong();
+
+        MvcResult boardResult = mockMvc.perform(get("/api/v1/projects/" + projectId + "/boards")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn();
+        long boardId = new ObjectMapper().readTree(boardResult.getResponse().getContentAsString())
+                .get(0).get("id").asLong();
+
+        MvcResult columnResult = mockMvc.perform(get("/api/v1/boards/" + boardId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn();
+        long columnId = new ObjectMapper().readTree(columnResult.getResponse().getContentAsString())
+                .get("columns").get(0).get("id").asLong();
+
+        MvcResult taskResult = mockMvc.perform(post("/api/v1/columns/" + columnId + "/tasks")
+                        .header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", "uuid-comment-e2e")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Task with comments\"}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+        long taskId = new ObjectMapper().readTree(taskResult.getResponse().getContentAsString())
+                .get("id").asLong();
+
+        mockMvc.perform(post("/api/v1/tasks/" + taskId + "/comments")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\":\"review my change\"}"))
+                .andExpect(status().isCreated());
+
+        outboxPublisher.publishPending();
+
+        // Wait for a COMMENT_CREATED activity row for this project.
+        long deadline = System.currentTimeMillis() + 20_000;
+        boolean seen = false;
+        while (!seen && System.currentTimeMillis() < deadline) {
+            seen = activityRepository.findAll().stream()
+                    .anyMatch(a -> a.getProjectId() != null
+                            && a.getProjectId().equals(projectId)
+                            && "COMMENT_CREATED".equals(a.getType()));
+            if (!seen) {
+                Thread.sleep(200);
+            }
+        }
+
+        assertThat(seen).as("comment.created event should reach the activity feed").isTrue();
     }
 
     private String register(String email) throws Exception {
