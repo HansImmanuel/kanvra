@@ -12,7 +12,6 @@ import com.kanvra.board.repository.BoardColumnRepository;
 import com.kanvra.board.repository.BoardRepository;
 import com.kanvra.common.error.ColumnNotEmptyException;
 import com.kanvra.common.error.ResourceNotFoundException;
-import com.kanvra.project.model.Project;
 import com.kanvra.project.service.ProjectAccessService;
 import com.kanvra.task.dto.TaskQueryService;
 import com.kanvra.task.dto.TaskSummary;

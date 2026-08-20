@@ -1,6 +1,5 @@
 package com.kanvra.common.error;
 
-import java.time.OffsetDateTime;
 
 /**
  * A single field-level validation message, present only in

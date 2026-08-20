@@ -1,7 +1,6 @@
 package com.kanvra.activity.service;
 
 import com.kanvra.activity.dto.ActivityResponse;
-import com.kanvra.activity.model.Activity;
 import com.kanvra.activity.repository.ActivityRepository;
 import com.kanvra.project.service.ProjectAccessService;
 import org.springframework.data.domain.Page;

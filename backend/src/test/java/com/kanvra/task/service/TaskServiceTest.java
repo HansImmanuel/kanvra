@@ -187,7 +187,8 @@ class TaskServiceTest {
         // the same eventId the outbox/Kafka event uses, so the frontend can ignore
         // its own WebSocket echo.
         assertThat(result.eventId()).isNotNull();
-        ArgumentCaptor<DomainEvent> captor = ArgumentCaptor.forClass(DomainEvent.class);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<DomainEvent<?>> captor = ArgumentCaptor.forClass((Class) DomainEvent.class);
         verify(eventPublisher).publish(captor.capture());
         assertThat(captor.getValue().eventId()).isEqualTo(result.eventId());
     }

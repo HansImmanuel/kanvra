@@ -103,9 +103,10 @@ class CommentServiceTest {
         assertThat(result.content()).isEqualTo("Please verify");
         assertThat(result.author().name()).isEqualTo("Hans");
 
-        ArgumentCaptor<DomainEvent> captor = ArgumentCaptor.forClass(DomainEvent.class);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<DomainEvent<?>> captor = ArgumentCaptor.forClass((Class) DomainEvent.class);
         verify(eventPublisher).publish(captor.capture());
-        DomainEvent event = captor.getValue();
+        DomainEvent<?> event = captor.getValue();
         assertThat(event.eventType()).isEqualTo(KafkaEventTypes.COMMENT_CREATED);
         assertThat(event.projectId()).isEqualTo(3L);
         assertThat(event.aggregateType()).isEqualTo(KafkaEventTypes.AGGREGATE_COMMENT);
@@ -157,7 +158,8 @@ class CommentServiceTest {
         service.delete(1L, 42L);
 
         assertThat(fixture.getDeletedAt()).isNotNull(); // soft delete marker set
-        ArgumentCaptor<DomainEvent> captor = ArgumentCaptor.forClass(DomainEvent.class);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<DomainEvent<?>> captor = ArgumentCaptor.forClass((Class) DomainEvent.class);
         verify(eventPublisher).publish(captor.capture());
         assertThat(captor.getValue().eventType()).isEqualTo(KafkaEventTypes.COMMENT_DELETED);
     }
