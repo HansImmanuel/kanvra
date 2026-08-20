@@ -10,8 +10,13 @@ import org.springframework.data.repository.query.Param;
 
 public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> {
 
-    @Query("select o from OutboxEvent o where o.publishedAt is null order by o.id asc")
-    List<OutboxEvent> findUnpublished();
+    /**
+     * Bounded poll for the scheduled publisher: only the oldest 100 unpublished
+     * rows are loaded per tick so a large backlog cannot be pulled into memory
+     * in one shot, and the synchronous {@code KafkaTemplate.send(...).get(...)}
+     * loop cannot spin unboundedly against a down broker (docs/TECH_DOC.md §8).
+     */
+    List<OutboxEvent> findTop100ByPublishedAtIsNullOrderByIdAsc();
 
     @Modifying
     @Query("update OutboxEvent o set o.publishedAt = :now where o.id in :ids")

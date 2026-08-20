@@ -134,6 +134,13 @@ public class TaskService {
             throw new OptimisticLockException("Task was modified by someone else; refresh and retry");
         }
 
+        // Same invariants as create(): an assignee must be a project member and
+        // every label must belong to this project (docs/SPEC.md §10, §16). PATCH
+        // must not bypass the checks create() enforces.
+        Long projectId = projectIdOf(boardIdOf(task.getColumnId()));
+        validateAssignee(projectId, request.assigneeId());
+        validateLabels(projectId, request.labelIds());
+
         Long previousAssignee = task.getAssigneeId();
         task.setTitle(request.title().trim());
         task.setDescription(request.description());
@@ -142,7 +149,6 @@ public class TaskService {
         task.setDueDate(request.dueDate());
         replaceLabels(taskId, request.labelIds());
 
-        Long projectId = projectIdOf(boardIdOf(task.getColumnId()));
         String actorName = actorName(userId);
 
         DomainEvent<Map<String, Object>> event = createEvent(
@@ -188,12 +194,23 @@ public class TaskService {
             reassignPositions(columnTasks);
             taskRepository.saveAll(columnTasks);
         } else {
-            List<Task> sourceTasks = taskRepository.lockTasksInColumn(from.getId());
+            // Acquire the two columns' row locks in a canonical order (lower id
+            // first) so two opposite-direction moves between the same columns
+            // cannot interleave lock acquisition and deadlock. The task row itself
+            // was already locked via lockById above, so both transactions serialize
+            // without a cycle (docs/SPEC.md §7 drag-and-drop concurrency).
+            Long firstColumnId = Math.min(from.getId(), to.getId());
+            Long secondColumnId = Math.max(from.getId(), to.getId());
+            List<Task> firstTasks = taskRepository.lockTasksInColumn(firstColumnId);
+            List<Task> secondTasks = taskRepository.lockTasksInColumn(secondColumnId);
+
+            List<Task> sourceTasks = task.getColumnId().equals(firstColumnId) ? firstTasks : secondTasks;
+            List<Task> targetTasks = sourceTasks == firstTasks ? secondTasks : firstTasks;
+
             sourceTasks.removeIf(t -> t.getId().equals(taskId));
             reassignPositions(sourceTasks);
             taskRepository.saveAll(sourceTasks);
 
-            List<Task> targetTasks = taskRepository.lockTasksInColumn(to.getId());
             int position = clamp(request.position(), targetTasks.size());
             task.setColumnId(to.getId());
             task.setPosition(position);

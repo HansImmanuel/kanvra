@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kanvra.activity.model.Activity;
 import com.kanvra.activity.repository.ActivityRepository;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.Instant;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -52,10 +54,20 @@ public class ActivityConsumer {
             activity.setMessage(buildMessage(eventType, envelope.path("payload")));
             activityRepository.save(activity);
         } catch (DataIntegrityViolationException ex) {
-            // Concurrent/duplicate delivery raced ahead of us.
+            // Concurrent/duplicate delivery raced ahead of us — the unique
+            // activities.event_id constraint already recorded this event.
             log.debug("Duplicate activity event dropped: {}", message);
-        } catch (Exception ex) {
-            log.error("Failed to process activity event: {}", message, ex);
+        } catch (IOException ex) {
+            // Malformed envelope — not a duplicate, so it must not be silently
+            // acked. Let Kafka redeliver (a DLT is deferred, TECH_DOC.md §20).
+            log.error("Malformed activity event; letting Kafka redeliver: {}", message, ex);
+            throw new UncheckedIOException(ex);
+        } catch (RuntimeException ex) {
+            // Any other failure must NOT be silently acked: rethrow so Spring
+            // Kafka redelivers the record (AGENT.md §12 — do not swallow Kafka
+            // errors). Redelivery + idempotency is the retry fabric for now.
+            log.error("Failed to process activity event; letting Kafka redeliver: {}", message, ex);
+            throw ex;
         }
     }
 

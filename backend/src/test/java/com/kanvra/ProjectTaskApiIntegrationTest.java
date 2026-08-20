@@ -3,6 +3,10 @@ package com.kanvra;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -10,6 +14,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -176,6 +182,89 @@ class ProjectTaskApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     // ---------------------------------------------------------------
+    // Tasklist 1 code-review regressions
+    // ---------------------------------------------------------------
+
+    @Test
+    void labelInUseCanBeHardDeletedWithout500() throws Exception {
+        String owner = register("label-delete@example.com");
+        long projectId = idOf(mockMvc.perform(post("/api/v1/projects")
+                        .header("Authorization", bearer(owner))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Labels\"}"))
+                .andExpect(status().isCreated())
+                .andReturn());
+        long boardId = firstBoardId(projectId, owner);
+        long columnId = columnId(boardId, 0, owner);
+
+        long labelId = idOf(mockMvc.perform(post("/api/v1/projects/" + projectId + "/labels")
+                        .header("Authorization", bearer(owner))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"backend\",\"color\":\"#2563EB\"}"))
+                .andExpect(status().isCreated())
+                .andReturn());
+
+        mockMvc.perform(post("/api/v1/columns/" + columnId + "/tasks")
+                        .header("Authorization", bearer(owner))
+                        .header("Idempotency-Key", "uuid-label-inuse-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Labeled task\",\"labelIds\":[" + labelId + "]}"))
+                .andExpect(status().isCreated());
+
+        // task_labels.label_id has no ON DELETE CASCADE; deleting a label that is
+        // still attached must hard-delete cleanly (204), never surface an FK 500.
+        mockMvc.perform(delete("/api/v1/labels/" + labelId)
+                        .header("Authorization", bearer(owner)))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void concurrentOppositeDirectionMovesNeverDeadlock() throws Exception {
+        String owner = register("concurrency-owner@example.com");
+        String mover = register("concurrency-mover@example.com");
+        long projectId = idOf(mockMvc.perform(post("/api/v1/projects")
+                        .header("Authorization", bearer(owner))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Concurrent\"}"))
+                .andExpect(status().isCreated())
+                .andReturn());
+        long boardId = firstBoardId(projectId, owner);
+        long columnA = columnId(boardId, 0, owner); // TODO
+        long columnB = columnId(boardId, 2, owner); // DONE
+
+        long memberUserId = idOf(mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"concurrency-mover@example.com\",\"password\":\"password123\"}"))
+                .andExpect(status().isOk())
+                .andReturn());
+        mockMvc.perform(post("/api/v1/projects/" + projectId + "/members")
+                        .header("Authorization", bearer(owner))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":" + memberUserId + ",\"role\":\"MEMBER\"}"))
+                .andExpect(status().isCreated());
+
+        long taskA = idOf(createColumnTask(columnA, "Task A", "uuid-cc-a", owner));
+        long taskB = idOf(createColumnTask(columnB, "Task B", "uuid-cc-b", owner));
+
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            Future<Integer> moveA = pool.submit(() -> moveStatusCode(taskA, columnB, owner));
+            Future<Integer> moveB = pool.submit(() -> moveStatusCode(taskB, columnA, mover));
+
+            int statusA = moveA.get(45, TimeUnit.SECONDS);
+            int statusB = moveB.get(45, TimeUnit.SECONDS);
+
+            // A deadlock (the pre-fix behavior) would surface as an unhandled 500
+            // or a hang; with canonical lock ordering both moves must complete as
+            // success or a retryable 409 — never a 500.
+            assertThat(statusA).isIn(200, 409);
+            assertThat(statusB).isIn(200, 409);
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    // ---------------------------------------------------------------
     // helpers
     // ---------------------------------------------------------------
 
@@ -218,6 +307,31 @@ class ProjectTaskApiIntegrationTest extends AbstractIntegrationTest {
 
     private JsonNode tree(MvcResult result) throws Exception {
         return MAPPER.readTree(result.getResponse().getContentAsString());
+    }
+
+    private MvcResult createColumnTask(long columnId, String title, String idempotencyKey, String token)
+            throws Exception {
+        return mockMvc.perform(post("/api/v1/columns/" + columnId + "/tasks")
+                        .header("Authorization", bearer(token))
+                        .header("Idempotency-Key", idempotencyKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"" + title + "\"}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+    }
+
+    private Integer moveStatusCode(long taskId, long targetColumnId, String token) {
+        try {
+            return mockMvc.perform(post("/api/v1/tasks/" + taskId + "/move")
+                            .header("Authorization", bearer(token))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"targetColumnId\":" + targetColumnId + ",\"position\":0,\"version\":0}"))
+                    .andReturn()
+                    .getResponse()
+                    .getStatus();
+        } catch (Exception e) {
+            throw new AssertionError("move request failed for task " + taskId, e);
+        }
     }
 }
 

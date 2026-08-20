@@ -42,7 +42,10 @@ public class OutboxPublisher {
     @Scheduled(fixedDelay = 500)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void publishPending() {
-        List<OutboxEvent> pending = repository.findUnpublished();
+        // Bounded batch: load only the oldest 100 unpublished rows per tick so a
+        // backlog or a down broker cannot balloon memory / block the scheduler
+        // indefinitely. Rows stay unpublished on failure and are retried next tick.
+        List<OutboxEvent> pending = repository.findTop100ByPublishedAtIsNullOrderByIdAsc();
         for (OutboxEvent row : pending) {
             try {
                 Map<String, Object> envelope = new LinkedHashMap<>();

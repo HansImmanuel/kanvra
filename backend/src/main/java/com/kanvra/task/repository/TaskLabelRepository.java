@@ -10,4 +10,6 @@ public interface TaskLabelRepository extends JpaRepository<TaskLabel, TaskLabelI
     List<TaskLabel> findByIdTaskId(Long taskId);
 
     void deleteByIdTaskId(Long taskId);
+
+    void deleteByIdLabelId(Long labelId);
 }
