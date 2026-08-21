@@ -153,6 +153,10 @@ public class CommentService {
         payload.put("commentId", comment.getId());
         payload.put("taskId", task.getId());
         payload.put("taskTitle", task.getTitle());
+        // assigneeId lets the Notification Consumer decide the recipient without
+        // querying PostgreSQL (TECH_DOC.md §11 denormalized-payload decision).
+        payload.put("assigneeId", task.getAssigneeId());
+        payload.put("commentAuthorId", userId);
         payload.put("content", comment.getContent());
         payload.put("actorName", actorName(userId));
         return DomainEvent.of(type, userId, projectId, KafkaEventTypes.AGGREGATE_COMMENT, comment.getId(), payload);

@@ -130,7 +130,7 @@ public class ProjectService {
 
     @Transactional
     public MemberResponse addMember(Long ownerId, Long projectId, AddMemberRequest request) {
-        access.requireProject(projectId);
+        Project project = access.requireProject(projectId);
         access.requireOwner(ownerId, projectId);
 
         User target = userRepository.findById(request.userId())
@@ -150,6 +150,7 @@ public class ProjectService {
                 KafkaEventTypes.PROJECT_MEMBER_ADDED, ownerId, projectId,
                 KafkaEventTypes.AGGREGATE_PROJECT, projectId,
                 Map.of("projectId", projectId, "userId", target.getId(), "role", request.role(),
+                        "projectName", project.getName(),
                         "actorName", actorName(ownerId))));
 
         return MemberResponse.from(member, target.getName());

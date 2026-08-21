@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kanvra.activity.model.Activity;
 import com.kanvra.activity.repository.ActivityRepository;
 import com.kanvra.kafka.consumer.ActivityConsumer;
+import com.kanvra.notification.repository.NotificationRepository;
 import com.kanvra.outbox.publisher.OutboxPublisher;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,7 @@ import org.testcontainers.utility.DockerImageName;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -51,6 +53,9 @@ class KafkaOutboxIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private ActivityConsumer activityConsumer;
+
+    @Autowired
+    private NotificationRepository notificationRepository;
 
     @Test
     void outboxEventFlowsThroughKafkaToActivityFeed() throws Exception {
@@ -163,6 +168,74 @@ class KafkaOutboxIntegrationTest extends AbstractIntegrationTest {
         }
 
         assertThat(seen).as("comment.created event should reach the activity feed").isTrue();
+    }
+
+    @Test
+    void taskAssignmentCreatesNotificationForAssigneeThroughKafka() throws Exception {
+        String owner = register("notif-owner@example.com");
+        String assignee = register("notif-assignee@example.com");
+
+        MvcResult projectResult = mockMvc.perform(post("/api/v1/projects")
+                        .header("Authorization", "Bearer " + owner)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Notif Project\"}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+        long projectId = new ObjectMapper().readTree(projectResult.getResponse().getContentAsString())
+                .get("id").asLong();
+
+        long assigneeId = new ObjectMapper().readTree(mockMvc.perform(get("/api/v1/me")
+                        .header("Authorization", "Bearer " + assignee))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString()).get("id").asLong();
+
+        mockMvc.perform(post("/api/v1/projects/" + projectId + "/members")
+                        .header("Authorization", "Bearer " + owner)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":" + assigneeId + ",\"role\":\"MEMBER\"}"))
+                .andExpect(status().isCreated());
+
+        long boardId = new ObjectMapper().readTree(mockMvc.perform(get("/api/v1/projects/" + projectId + "/boards")
+                        .header("Authorization", "Bearer " + owner))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString()).get(0).get("id").asLong();
+        long columnId = new ObjectMapper().readTree(mockMvc.perform(get("/api/v1/boards/" + boardId)
+                        .header("Authorization", "Bearer " + owner))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString()).get("columns").get(0).get("id").asLong();
+
+        MvcResult taskResult = mockMvc.perform(post("/api/v1/columns/" + columnId + "/tasks")
+                        .header("Authorization", "Bearer " + owner)
+                        .header("Idempotency-Key", "uuid-notif-assign")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Task to assign\",\"assigneeId\":" + assigneeId + "}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+        long taskId = new ObjectMapper().readTree(taskResult.getResponse().getContentAsString()).get("id").asLong();
+
+        // Flush outbox; the NotificationConsumer (group kanvra-notification) runs
+        // in this context and will create a TASK_ASSIGNED notification.
+        outboxPublisher.publishPending();
+
+        long deadline = System.currentTimeMillis() + 20_000;
+        boolean seen = false;
+        while (!seen && System.currentTimeMillis() < deadline) {
+            seen = notificationRepository.findAll().stream()
+                    .anyMatch(n -> n.getRecipientId().equals(assigneeId)
+                            && "TASK_ASSIGNED".equals(n.getType())
+                            && java.util.Objects.equals(n.getReferenceId(), taskId));
+            if (!seen) {
+                Thread.sleep(200);
+            }
+        }
+
+        assertThat(seen).as("task.assigned should produce a notification for the assignee").isTrue();
+
+        // The assignee sees it in the notification center.
+        mockMvc.perform(get("/api/v1/notifications")
+                        .header("Authorization", "Bearer " + assignee))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1));
     }
 
     private String register(String email) throws Exception {

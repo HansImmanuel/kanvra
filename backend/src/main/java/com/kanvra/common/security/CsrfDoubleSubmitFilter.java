@@ -49,6 +49,14 @@ public class CsrfDoubleSubmitFilter extends OncePerRequestFilter {
         String method = request.getMethod();
         String uri = request.getRequestURI();
 
+        // The WebSocket handshake is a same-site-invisible GET upgrade — the browser can't attach a CSRF
+        // cookie/header to a WS upgrade, and the realtime handshake layer authenticates every /ws connection
+        // explicitly (SPEC §15.1). Therefore /ws is exempt from the double-submit rule.
+        if (uri.startsWith("/ws")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         if (SAFE_METHODS.contains(method) || AUTH_BOOTSTRAP_PATHS.contains(uri)) {
             filterChain.doFilter(request, response);
             return;

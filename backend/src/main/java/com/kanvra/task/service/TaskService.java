@@ -157,7 +157,8 @@ public class TaskService {
         if (request.assigneeId() != null && !request.assigneeId().equals(previousAssignee)) {
             eventPublisher.publish(createEvent(
                     KafkaEventTypes.TASK_ASSIGNED, userId, projectId, task, actorName,
-                    Map.of("taskId", task.getId(), "taskTitle", task.getTitle(), "assigneeId", request.assigneeId())));
+                    Map.of("taskId", task.getId(), "taskTitle", task.getTitle(),
+                            "assigneeId", request.assigneeId())));
         } else if (request.assigneeId() == null && previousAssignee != null) {
             eventPublisher.publish(createEvent(
                     KafkaEventTypes.TASK_UNASSIGNED, userId, projectId, task, actorName,
@@ -232,7 +233,8 @@ public class TaskService {
             eventPublisher.publish(createEvent(
                     KafkaEventTypes.TASK_COMPLETED, userId, projectId, task, actorName,
                     Map.of("taskId", task.getId(), "taskTitle", task.getTitle(),
-                            "columnId", to.getId(), "columnName", to.getName())));
+                            "columnId", to.getId(), "columnName", to.getName(),
+                            "assigneeId", task.getAssigneeId())));
         }
 
         return TaskResponse.from(task).withEventId(event.eventId());
