@@ -188,7 +188,7 @@ class TaskServiceTest {
         // its own WebSocket echo.
         assertThat(result.eventId()).isNotNull();
         @SuppressWarnings("unchecked")
-        ArgumentCaptor<DomainEvent<?>> captor = ArgumentCaptor.forClass((Class) DomainEvent.class);
+        ArgumentCaptor<DomainEvent<?>> captor = ArgumentCaptor.forClass((Class<DomainEvent<?>>) (Class<?>) DomainEvent.class);
         verify(eventPublisher).publish(captor.capture());
         assertThat(captor.getValue().eventId()).isEqualTo(result.eventId());
     }

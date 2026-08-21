@@ -18,6 +18,7 @@ public abstract class AbstractIntegrationTest {
 
     @Container
     @ServiceConnection
+    @SuppressWarnings("resource")
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17")
             .withDatabaseName("kanvra_test")
             .withUsername("test")

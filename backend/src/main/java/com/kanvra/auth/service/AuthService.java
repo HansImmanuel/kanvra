@@ -81,10 +81,9 @@ public class AuthService {
     @Transactional
     public AuthSession refresh(String rawRefreshToken) {
         String jti;
-        Long userId;
         try {
             jti = jwtService.extractJti(rawRefreshToken, JwtTokenType.REFRESH);
-            userId = jwtService.parse(rawRefreshToken, JwtTokenType.REFRESH).id();
+            jwtService.parse(rawRefreshToken, JwtTokenType.REFRESH); // validates signature/expiry
         } catch (JwtException | IllegalArgumentException ex) {
             throw new UnauthorizedException("Invalid or expired refresh token");
         }

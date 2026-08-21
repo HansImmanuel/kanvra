@@ -29,8 +29,6 @@ class AuthFlowIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private JwtService jwtService;
 
     @Test
     void registerIssuesCookiesAndMeReturnsUser() throws Exception {
@@ -79,7 +77,7 @@ class AuthFlowIntegrationTest extends AbstractIntegrationTest {
                         .content("""
                                 {"name":"","email":"not-an-email","password":"short"}
                                 """))
-                .andExpect(status().isUnprocessableEntity())
+                .andExpect(status().is(422))
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
                 .andExpect(jsonPath("$.errors").isArray())
                 .andExpect(jsonPath("$.errors.length()").value(3));

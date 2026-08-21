@@ -135,7 +135,6 @@ class AuthServiceTest {
 
     @Test
     void refreshRejectsExpiredToken() {
-        User user = new User();
         RefreshToken expired = activeRefreshToken(1L, "expired-jti");
         expired.setExpiresAt(Instant.now().minusSeconds(1));
         when(jwtService.extractJti("tok", JwtTokenType.REFRESH)).thenReturn("expired-jti");

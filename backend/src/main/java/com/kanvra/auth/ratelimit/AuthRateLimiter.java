@@ -4,7 +4,7 @@ import com.kanvra.common.config.KanvraProperties;
 import com.kanvra.common.error.RateLimitExceededException;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
-import io.github.bucket4j.Refill;
+
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -81,7 +81,10 @@ public class AuthRateLimiter {
 
     private Bucket newBucket() {
         return Bucket.builder()
-                .addLimit(Bandwidth.classic(permitsPerMinute, Refill.greedy(permitsPerMinute, WINDOW)))
+                .addLimit(Bandwidth.builder()
+                        .capacity(permitsPerMinute)
+                        .refillGreedy(permitsPerMinute, WINDOW)
+                        .build())
                 .build();
     }
 

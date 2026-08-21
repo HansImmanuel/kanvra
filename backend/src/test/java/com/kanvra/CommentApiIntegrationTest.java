@@ -82,7 +82,7 @@ class CommentApiIntegrationTest extends AbstractIntegrationTest {
                         .header("Authorization", bearer(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\":\"   \"}"))
-                .andExpect(status().isUnprocessableEntity());
+                .andExpect(status().is(422));
     }
 
     @Test
