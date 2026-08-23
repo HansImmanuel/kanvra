@@ -1,21 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { post } from "@/lib/api";
+import { realtime, noteLocalEventId } from "@/lib/websocket";
 import TaskCard from "@/components/task/TaskCard";
-import type { BoardDetail, TaskCard as TaskCardType } from "@/types";
+import type { BoardDetail, TaskCard as TaskCardType, TaskResponse } from "@/types";
 
 interface BoardProps {
   board: BoardDetail;
-  /** Reloads the board from the server (after a mutation). */
+  /** Reloads the board from the server (after a mutation or remote change). */
   onReload: () => void;
 }
 
 /**
- * Renders a Kanban board (docs/TECH_DOC.md §14 "Board state"). Mutations call
- * the backend with the task's known version; the authoritative state is
- * re-fetched afterwards. Optimistic UI + reconcile and the realtime update come
- * in Tasklist 6.
+ * Renders a Kanban board and wires realtime updates (docs/TECH_DOC.md §14
+ * "Board state", SPEC §15). Mutations send the task's known version and record
+ * their eventId (local echo is ignored on the WS stream). Remote events and
+ * any reconnect trigger a full re-fetch (SPEC §15.2 resync), so the server
+ * always remains the source of truth.
  */
 export default function Board({ board, onReload }: BoardProps) {
   const [titles, setTitles] = useState<Record<number, string>>({});
@@ -26,7 +28,8 @@ export default function Board({ board, onReload }: BoardProps) {
     if (!title) return;
     setBusy(true);
     try {
-      await post(`/api/v1/columns/${columnId}/tasks`, { title });
+      const created = await post<TaskResponse>(`/api/v1/columns/${columnId}/tasks`, { title });
+      noteLocalEventId(created.eventId);
       setTitles((t) => ({ ...t, [columnId]: "" }));
       onReload();
     } finally {
@@ -37,16 +40,30 @@ export default function Board({ board, onReload }: BoardProps) {
   const moveTask = async (task: TaskCardType, targetColumnId: number, position: number) => {
     setBusy(true);
     try {
-      await post(`/api/v1/tasks/${task.id}/move`, {
+      const moved = await post<TaskResponse>(`/api/v1/tasks/${task.id}/move`, {
         targetColumnId,
         position,
         version: task.version
       });
+      noteLocalEventId(moved.eventId);
       onReload();
     } finally {
       setBusy(false);
     }
   };
+
+  // Connect to realtime for this board's project; re-load on reconnect and when
+  // a remote (non-local-echo) event arrives.
+  useEffect(() => {
+    if (!board?.projectId) return;
+    realtime.onResync(onReload);
+    realtime.on(onReload);
+    realtime.connect(board.projectId);
+    return () => {
+      realtime.offResync(onReload);
+      realtime.off(onReload);
+    };
+  }, [board?.projectId]);
 
   const columnIndex = (id: number) => board.columns.findIndex((c) => c.id === id);
   const appendPos = (columnId: number) =>

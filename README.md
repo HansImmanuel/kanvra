@@ -12,11 +12,11 @@ board updates.
 
 | Layer          | Technology                                            |
 |----------------|-------------------------------------------------------|
-| Frontend       | Next.js + TypeScript (coming soon)                    |
+| Frontend       | Next.js + TypeScript (App Router, Tailwind CSS)        |
 | Backend        | Java 21 + Spring Boot (modular monolith)              |
 | Persistence    | Spring Data JPA / Hibernate + PostgreSQL (Flyway)     |
 | Messaging      | Apache Kafka (KRaft mode) via transactional outbox    |
-| Realtime       | Spring WebSocket + STOMP (coming soon)                |
+| Realtime       | Spring WebSocket + STOMP (@stomp/stompjs client)      |
 | Security       | Spring Security, cookie-based JWT + CSRF double-submit|
 | Build / CI     | Maven, GitHub Actions                                  |
 
@@ -45,11 +45,29 @@ cd backend
 The API is served at `http://localhost:8080/api/v1`. Actuator health is at
 `http://localhost:8080/actuator/health`.
 
-### 3. Tests
+### 3. Run the frontend
 
 ```bash
+cd frontend
+npm install
+npm run dev        # http://localhost:3000
+```
+
+`/api/*` requests are proxied to the backend (`KANVRA_BACKEND_URL`, default
+`http://localhost:8080`). The board's WebSocket connects directly to the backend
+`/ws` endpoint (same-site cross-origin); override with `NEXT_PUBLIC_WS_URL`.
+
+### 4. Tests
+
+```bash
+# backend (unit + Testcontainers integration tests; the latter skip locally if Docker is unavailable)
 cd backend
 ./mvnw test
+
+# frontend
+cd frontend
+npm run typecheck
+npm run build
 ```
 
 ### Configuration via environment variables
@@ -72,12 +90,14 @@ Sensitive/non-default settings are supplied through environment variables (see `
 - **Access tokens are not revocable** — exposure is bounded by their short (~30 min) expiry. Refresh tokens *are*
   revocable server-side since Sprint 2: rotation revokes the old token, reuse detection revokes the family, and
   logout revokes all active refresh tokens (see `SPEC.md` §3.4/§3.5).
+- **Rate limiter is per-instance** (in-memory bucket, not distributed) — fine for the single-instance MVP, but the
+  effective limit multiplies by replica count if the backend is ever scaled out.
 
 ## Repository layout
 
 ```text
 backend/    Spring Boot modular monolith
-frontend/   Next.js application (to be scaffolded)
+frontend/   Next.js application (App Router, Tailwind)
 infra/      Docker Compose + container tooling
 docs/       PRD / SPEC / TECH_DOC / AGENT (source of truth)
 ```
