@@ -74,8 +74,8 @@ class TaskServiceTest {
 
     @Test
     void createReplaysCachedIdempotentResponseWithoutDatabaseWork() {
-        TaskResponse original = new TaskResponse(99L, 1L, "Original", null, "HIGH", null, null, 0, 0,
-                Instant.now(), UUID.randomUUID());
+        TaskResponse original = new TaskResponse(99L, 1L, "Original", null, "HIGH", null, null,
+                java.util.List.of(), 0, 0, Instant.now(), UUID.randomUUID());
         IdempotencyKey hit = new IdempotencyKey();
         hit.setResponseBody(objectMapper.valueToTree(original));
         hit.setExpiresAt(Instant.now().plusSeconds(60));

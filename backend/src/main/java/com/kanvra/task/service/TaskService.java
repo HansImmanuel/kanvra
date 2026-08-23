@@ -62,10 +62,10 @@ public class TaskService {
     private final UserRepository userRepository;
 
     public TaskService(TaskRepository taskRepository, TaskLabelRepository taskLabelRepository,
-                       LabelRepository labelRepository, BoardColumnRepository columnRepository,
-                       BoardRepository boardRepository, ProjectMemberRepository memberRepository,
-                       ProjectAccessService access, IdempotencyKeyRepository idempotencyRepository,
-                       EventPublisher eventPublisher, ObjectMapper objectMapper, UserRepository userRepository) {
+            LabelRepository labelRepository, BoardColumnRepository columnRepository,
+            BoardRepository boardRepository, ProjectMemberRepository memberRepository,
+            ProjectAccessService access, IdempotencyKeyRepository idempotencyRepository,
+            EventPublisher eventPublisher, ObjectMapper objectMapper, UserRepository userRepository) {
         this.taskRepository = taskRepository;
         this.taskLabelRepository = taskLabelRepository;
         this.labelRepository = labelRepository;
@@ -114,7 +114,7 @@ public class TaskService {
                         "columnId", columnId, "columnName", column.getName()));
         eventPublisher.publish(event);
 
-        TaskResponse response = TaskResponse.from(task).withEventId(event.eventId());
+        TaskResponse response = TaskResponse.from(task, labelIdsOf(task.getId())).withEventId(event.eventId());
         storeIdempotencyKey(userId, idempotencyKey, task.getId(), response);
         return response;
     }
@@ -122,7 +122,7 @@ public class TaskService {
     @Transactional(readOnly = true)
     public TaskResponse get(Long userId, Long taskId) {
         Task task = requireTaskAccess(userId, taskId);
-        return TaskResponse.from(task);
+        return TaskResponse.from(task, labelIdsOf(taskId));
     }
 
     @Transactional
@@ -168,7 +168,7 @@ public class TaskService {
                     Map.of("taskId", task.getId(), "taskTitle", task.getTitle())));
         }
 
-        return TaskResponse.from(task).withEventId(event.eventId());
+        return TaskResponse.from(task, labelIdsOf(taskId)).withEventId(event.eventId());
     }
 
     @Transactional
@@ -249,7 +249,7 @@ public class TaskService {
                     completedPayload));
         }
 
-        return TaskResponse.from(task).withEventId(event.eventId());
+        return TaskResponse.from(task, labelIdsOf(taskId)).withEventId(event.eventId());
     }
 
     @Transactional
@@ -263,7 +263,6 @@ public class TaskService {
                 Map.of("taskId", task.getId(), "taskTitle", task.getTitle(), "columnId", task.getColumnId()));
         eventPublisher.publish(event);
     }
-
 
     // ---------------------------------------------------------------
     // Helpers
@@ -342,7 +341,7 @@ public class TaskService {
     }
 
     private DomainEvent<Map<String, Object>> createEvent(String type, Long userId, Long projectId, Task task,
-                                                         String actorName, Map<String, Object> payload) {
+            String actorName, Map<String, Object> payload) {
         Map<String, Object> enriched = new java.util.HashMap<>(payload);
         enriched.put("actorName", actorName);
         return DomainEvent.of(type, userId, projectId, KafkaEventTypes.AGGREGATE_TASK, task.getId(), enriched);
@@ -350,6 +349,13 @@ public class TaskService {
 
     private String actorName(Long userId) {
         return userRepository.findById(userId).map(User::getName).orElse("Someone");
+    }
+
+    /** Current label ids for a task — used to build lossless TaskResponses. */
+    private List<Long> labelIdsOf(Long taskId) {
+        return taskLabelRepository.findByIdTaskId(taskId).stream()
+                .map(link -> link.getId().getLabelId())
+                .toList();
     }
 
     private void reassignPositions(List<Task> tasks) {
@@ -390,4 +396,3 @@ public class TaskService {
         return task;
     }
 }
-

@@ -55,6 +55,13 @@ public class NotificationConsumer {
             if (n == null) {
                 return; // event irrelevant to any recipient
             }
+            // Denormalized project scope for frontend deep-linking (Sprint 4).
+            if (envelope.hasNonNull("projectId")) {
+                long envelopeProjectId = envelope.get("projectId").asLong();
+                if (envelopeProjectId != 0L) {
+                    n.setProjectId(envelopeProjectId);
+                }
+            }
             if (notificationRepository.existsByRecipientIdAndEventId(n.getRecipientId(), n.getEventId())) {
                 return; // duplicate delivery for this recipient
             }

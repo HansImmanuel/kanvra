@@ -7,4 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface LabelRepository extends JpaRepository<Label, Long> {
 
     List<Label> findByProjectId(Long projectId);
+
+    /** Name-sorted list for the project-settings and task-detail pickers. */
+    List<Label> findByProjectIdOrderByNameAsc(Long projectId);
 }

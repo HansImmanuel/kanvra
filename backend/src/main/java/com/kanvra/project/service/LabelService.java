@@ -6,6 +6,7 @@ import com.kanvra.project.dto.LabelResponse;
 import com.kanvra.project.model.Label;
 import com.kanvra.project.repository.LabelRepository;
 import com.kanvra.task.repository.TaskLabelRepository;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +25,15 @@ public class LabelService {
         this.labelRepository = labelRepository;
         this.taskLabelRepository = taskLabelRepository;
         this.access = access;
+    }
+
+    /** Membership-scoped label list, name-sorted — feeds the assignee/label pickers. */
+    @Transactional(readOnly = true)
+    public List<LabelResponse> list(Long userId, Long projectId) {
+        access.requireMembership(userId, projectId);
+        return labelRepository.findByProjectIdOrderByNameAsc(projectId).stream()
+                .map(LabelResponse::from)
+                .toList();
     }
 
     @Transactional

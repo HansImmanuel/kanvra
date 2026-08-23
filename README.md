@@ -8,6 +8,53 @@ board updates.
 > Product scope and contracts are defined in `docs/` (`PRD.md`, `SPEC.md`, `TECH_DOC.md`, `AGENT.md`). These
 > documents are the source of truth; keep them aligned with the implementation.
 
+## Architecture
+
+```text
+                    ┌─────────────────────────┐
+                    │        Next.js          │
+                    │     Web Application     │
+                    └────────────┬────────────┘
+                                 │
+                     REST (cookie session) + WebSocket/STOMP
+                                 │
+                                 ▼
+                   ┌───────────────────────────┐
+                   │       Spring Boot         │
+                   │      Modular Monolith     │
+                   │                           │
+                   │  Auth / Projects / Boards │
+                   │  Tasks / Comments / Users │
+                   └──────┬──────────────┬─────┘
+                          │              │
+                          │ SQL          │ Outbox row (same
+                          ▼              ▼ transaction)
+                   ┌──────────┐   ┌──────────────┐    mark published
+                   │PostgreSQL│   │ outbox_events│──────────────┐
+                   └──────────┘   └──────┬───────┘              │
+                                         │ poll                 ▼
+                                         ▼               ┌───────────┐
+                                   ┌──────────┐          │   Kafka   │
+                                   │ Consumers│◄─────────┤domain-events│
+                                   └──────────┘          └───────────┘
+                                   activity · notification · realtime
+```
+
+## Feature status (end of Sprint 4)
+
+- **Auth** — register/login/logout, refresh-token rotation with reuse detection, CSRF double-submit, rate limiting
+- **Projects & members** — CRUD, archive, member add/remove (OWNER-gated), settings UI
+- **Boards & columns** — multiple boards per project (switcher + creation), column create/rename/delete/reorder
+- **Tasks** — idempotent creation, version-gated editing (task detail modal), optimistic move with conflict rollback,
+  labels, assignment, due dates, soft delete
+- **Comments** — thread on each task, author-only edit/delete, realtime refresh
+- **Labels** — project-level CRUD with color palette; lossless assignment via `labelIds` round-trip
+- **Activity feed** — async via the Kafka Activity Consumer, visible in the project panel
+- **Notifications** — Kafka-driven, bell with unread badge, mark read/read-all, deep-linking via denormalized `projectId`
+- **Realtime** — STOMP broadcast to `/topic/projects/{id}`, reconnect resync, WS-unreachable polling fallback
+- **Reliability hardening** — transactional outbox with backoff/jitter publisher, dead-letter table for poison pills,
+  optimistic concurrency everywhere, idempotency keys with scheduled purge
+
 ## Stack
 
 | Layer          | Technology                                            |
@@ -34,6 +81,10 @@ This starts:
 - **PostgreSQL 17** on `localhost:5432` (db/user/pass = `kanvra` / `kanvra` / `kanvra_dev`)
 - **Apache Kafka 3.9 (KRaft)** — dual listeners: `localhost:29092` (EXTERNAL, for host tools/apps) and `kafka:9092` (INTERNAL, for in-network containers)
 - **Kafka UI** on `http://localhost:8081`
+- **Spring Boot backend** on `http://localhost:8080` (built from `backend/Dockerfile`; waits for Postgres/Kafka
+  health before starting; `/actuator/health` container healthcheck)
+
+The Next.js frontend still runs locally (`npm run dev`) so hot reload works.
 
 ### 2. Run the backend
 
@@ -67,6 +118,7 @@ cd backend
 # frontend
 cd frontend
 npm run typecheck
+npm run lint
 npm run test
 npm run build
 ```

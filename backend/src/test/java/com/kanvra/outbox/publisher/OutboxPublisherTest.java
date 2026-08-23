@@ -2,7 +2,6 @@ package com.kanvra.outbox.publisher;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.kanvra.kafka.config.KafkaConfig;
 import com.kanvra.outbox.model.OutboxEvent;
 import com.kanvra.outbox.repository.OutboxEventRepository;
 import java.time.Instant;
@@ -38,8 +37,10 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class OutboxPublisherTest {
 
-    @Mock private OutboxEventRepository repository;
-    @Mock private KafkaTemplate<String, String> kafkaTemplate;
+    @Mock
+    private OutboxEventRepository repository;
+    @Mock
+    private KafkaTemplate<String, String> kafkaTemplate;
 
     private final ObjectMapper mapper = new ObjectMapper();
     private OutboxPublisher publisher;

@@ -5,7 +5,6 @@ import com.kanvra.common.security.CookieService;
 import com.kanvra.common.security.JwtService;
 import com.kanvra.common.security.JwtTokenType;
 import io.jsonwebtoken.JwtException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -20,12 +19,15 @@ import org.springframework.web.socket.server.HandshakeInterceptor;
 
 /**
  * Realtime handshake authentication (docs/SPEC.md §15.1): browser
- * clients authenticate with the httpOnly {@code access_token} cookie; non-browser
- * clients send {@code Authorization: Bearer <access_token>} on the WebSocket HTTP
+ * clients authenticate with the httpOnly {@code access_token} cookie;
+ * non-browser
+ * clients send {@code Authorization: Bearer <access_token>} on the WebSocket
+ * HTTP
  * Upgrade request. A valid access token is parsed and attached to the session
  * attributes (for the later SUBSCRIBE membership check).
  *
- * <p>Query-string tokens are explicitly not supported (they leak into
+ * <p>
+ * Query-string tokens are explicitly not supported (they leak into
  * proxy/history logs).
  */
 @Component
@@ -44,7 +46,7 @@ public class RealtimeHandshakeInterceptor implements HandshakeInterceptor {
 
     @Override
     public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
-                                   WebSocketHandler wsHandler, Map<String, Object> attributes) {
+            WebSocketHandler wsHandler, Map<String, Object> attributes) {
         String token = null;
         if (request instanceof ServletServerHttpRequest servletRequest) {
             HttpServletRequest http = servletRequest.getServletRequest();
@@ -77,7 +79,7 @@ public class RealtimeHandshakeInterceptor implements HandshakeInterceptor {
 
     @Override
     public void afterHandshake(ServerHttpRequest request, ServerHttpResponse response,
-                             WebSocketHandler wsHandler, Exception exception) {
+            WebSocketHandler wsHandler, Exception exception) {
         // nothing
     }
 }

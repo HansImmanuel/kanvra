@@ -52,6 +52,14 @@ export interface BoardRef {
   name: string;
 }
 
+// §6 column mutation responses (ColumnResponse)
+export interface ColumnInfo {
+  id: number;
+  boardId: number;
+  name: string;
+  position: number;
+}
+
 // §7 (task mutations)
 export interface TaskResponse {
   id: number;
@@ -61,6 +69,8 @@ export interface TaskResponse {
   priority: string | null;
   assigneeId: number | null;
   dueDate: string | null;
+  /** Current labels — lets a version-gated PATCH round-trip them losslessly. */
+  labelIds: number[] | null;
   position: number;
   version: number;
   createdAt: string;
@@ -85,4 +95,71 @@ export interface ApiErrorBody {
   message: string;
   errors?: { field: string; message: string }[] | null;
   currentState?: TaskResponse | null;
+}
+
+// §4 project members (MemberResponse)
+export interface Member {
+  id: number;
+  name: string;
+  role: string;
+  joinedAt: string;
+}
+
+// §9 labels (LabelResponse)
+export interface Label {
+  id: number;
+  projectId: number;
+  name: string;
+  color: string;
+}
+
+// §8 comments (CommentResponse)
+export interface CommentAuthor {
+  id: number;
+  name: string;
+  avatarUrl: string | null;
+}
+export interface Comment {
+  id: number;
+  taskId: number;
+  author: CommentAuthor;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// §7 task update body — version-gated (optimistic concurrency). The client
+// always sends the version it last saw; the server rejects mismatches with
+// TASK_VERSION_CONFLICT + currentState.
+export interface TaskUpdate {
+  title: string;
+  description?: string | null;
+  priority?: string | null;
+  assigneeId?: number | null;
+  dueDate?: string | null;
+  labelIds?: number[];
+  version: number;
+}
+
+// §11 activity (ActivityResponse)
+export interface Activity {
+  id: number;
+  projectId: number;
+  actorId: number | null;
+  type: string;
+  message: string;
+  createdAt: string;
+}
+
+// §12 notifications (NotificationResponse)
+export interface Notification {
+  id: number;
+  type: string;
+  referenceId: number | null;
+  referenceType: string;
+  /** Denormalized project scope (Sprint 4) for deep-linking. */
+  projectId: number | null;
+  message: string;
+  readAt: string | null;
+  createdAt: string;
 }

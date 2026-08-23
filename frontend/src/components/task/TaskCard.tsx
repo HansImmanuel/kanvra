@@ -11,16 +11,26 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 interface TaskCardProps {
   task: TaskCard;
-  onMove: (task: TaskCard, targetColumnId: number, position: number) => void;
+  /** Optional: makes the title clickable to open the task detail modal. */
+  onSelect?: (task: TaskCard) => void;
 }
 
-/** A single task card; shows labels/priority and move controls. */
-export default function TaskCard({ task, onMove }: TaskCardProps) {
+/** A single task card; shows labels/priority, move controls live in Board. */
+export default function TaskCard({ task, onSelect }: TaskCardProps) {
   const priority = task.priority ?? "NONE";
+  const titleButton = (
+    <button
+      type="button"
+      className="text-left font-medium text-slate-800 hover:text-slate-600 hover:underline focus:outline-none"
+      onClick={() => onSelect?.(task)}
+    >
+      {task.title}
+    </button>
+  );
   return (
     <div className="rounded-lg border border-slate-300 bg-white p-3 shadow-sm">
       <div className="flex items-start justify-between gap-2">
-        <p className="font-medium text-slate-800">{task.title}</p>
+        <p className="font-medium text-slate-800">{titleButton}</p>
         {task.priority && (
           <span
             className={"inline-block rounded px-1.5 py-0.5 text-xs " + (PRIORITY_COLORS[priority] ?? "bg-slate-200")}

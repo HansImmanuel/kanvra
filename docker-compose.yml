@@ -60,5 +60,33 @@ services:
       kafka:
         condition: service_healthy
 
+  # Spring Boot backend (TECH_DOC §21/§27): health-gated startup so Flyway
+  # migrations and Kafka consumers only run once Postgres/Kafka are ready.
+  backend:
+    build: ./backend
+    container_name: kanvra-backend
+    restart: unless-stopped
+    environment:
+      KANVRA_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-kanvra}
+      KANVRA_DB_USERNAME: ${POSTGRES_USER:-kanvra}
+      KANVRA_DB_PASSWORD: ${POSTGRES_PASSWORD:-kanvra_dev}
+      KANVRA_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KANVRA_JWT_SECRET: ${KANVRA_JWT_SECRET:-dev-only-change-me-in-prod-base64-secret}
+      KANVRA_CORS_ORIGINS: ${KANVRA_CORS_ORIGINS:-http://localhost:3000}
+      KANVRA_COOKIES_SECURE: ${KANVRA_COOKIES_SECURE:-false}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
 volumes:
   kanvra-postgres-data:

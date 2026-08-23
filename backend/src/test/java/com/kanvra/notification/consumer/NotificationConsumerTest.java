@@ -66,6 +66,8 @@ class NotificationConsumerTest {
         assertThat(n.getType()).isEqualTo("TASK_ASSIGNED");
         assertThat(n.getReferenceType()).isEqualTo("TASK");
         assertThat(n.getReferenceId()).isEqualTo(5L);
+        // Sprint 4: denormalized project scope for deep-linking.
+        assertThat(n.getProjectId()).isEqualTo(1L);
         assertThat(n.getMessage()).contains("assigned you the task 'Fix auth'");
     }
 

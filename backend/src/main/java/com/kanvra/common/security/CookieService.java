@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.time.Duration;
 import java.util.UUID;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,11 @@ import org.springframework.stereotype.Service;
  *   <li>{@code refresh_token} - httpOnly, SameSite=Strict, path-scoped to the refresh endpoint</li>
  *   <li>{@code csrf_token} - NOT httpOnly (readable by JS) for the double-submit pattern</li>
  * </ul>
+ *
+ * Secure-flag resolution (Sprint 4): {@code Secure} is set when the explicit
+ * {@code kanvra.cookies.secure} flag is true <em>or</em> when
+ * {@code server.ssl.enabled} is true. The request scheme is deliberately never
+ * sniffed — that breaks behind TLS-terminating reverse proxies.
  */
 @Service
 public class CookieService {
@@ -26,8 +32,9 @@ public class CookieService {
 
     private final boolean secure;
 
-    public CookieService(KanvraProperties properties) {
-        this.secure = properties.getCookies().isSecure();
+    public CookieService(KanvraProperties properties, Environment environment) {
+        boolean sslEnabled = environment.getProperty("server.ssl.enabled", Boolean.class, false);
+        this.secure = properties.getCookies().isSecure() || sslEnabled;
     }
 
     public void addSessionCookies(HttpServletResponse response, String accessToken, String refreshToken,

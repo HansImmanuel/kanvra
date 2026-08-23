@@ -39,6 +39,10 @@ public class Notification {
     @Column(name = "reference_type", length = 20)
     private String referenceType;
 
+    /** Denormalized project scope so the UI can deep-link a notification (Sprint 4). */
+    @Column(name = "project_id")
+    private Long projectId;
+
     @Column(nullable = false)
     private String message;
 
@@ -97,6 +101,14 @@ public class Notification {
 
     public void setReferenceType(String referenceType) {
         this.referenceType = referenceType;
+    }
+
+    public Long getProjectId() {
+        return projectId;
+    }
+
+    public void setProjectId(Long projectId) {
+        this.projectId = projectId;
     }
 
     public String getMessage() {

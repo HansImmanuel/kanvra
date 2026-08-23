@@ -49,7 +49,9 @@ class NotificationApiIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/v1/notifications")
                         .header("Authorization", bearer(token)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(2));
+                .andExpect(jsonPath("$.totalElements").value(2))
+                // Sprint 4: denormalized project scope rides on every row.
+                .andExpect(jsonPath("$.content[0].projectId").value(10));
 
         mockMvc.perform(post("/api/v1/notifications/" + unreadId + "/read")
                         .header("Authorization", bearer(token)))
@@ -81,6 +83,7 @@ class NotificationApiIntegrationTest extends AbstractIntegrationTest {
         n.setType("TASK_ASSIGNED");
         n.setReferenceId(1L);
         n.setReferenceType("TASK");
+        n.setProjectId(10L);
         n.setMessage(message);
         return notificationRepository.save(n).getId();
     }

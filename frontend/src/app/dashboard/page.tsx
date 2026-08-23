@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { currentUserSafe, logout } from "@/lib/auth";
 import { get, post } from "@/lib/api";
+import NotificationBell from "@/components/notification/NotificationBell";
 import type { ApiPage, Project, User } from "@/types";
 
 export default function DashboardPage() {
@@ -48,6 +49,7 @@ export default function DashboardPage() {
       <header className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
         <div className="flex items-center gap-3">
+          <NotificationBell />
           <span className="text-sm text-slate-600">{user?.name}</span>
           <button className="rounded border border-slate-300 px-3 py-1 text-sm" onClick={handleLogout}>
             Log out

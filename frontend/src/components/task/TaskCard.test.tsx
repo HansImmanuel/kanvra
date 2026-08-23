@@ -21,7 +21,7 @@ describe("TaskCard", () => {
       labels: [{ id: 1, name: "backend", color: "#2563EB" }],
       commentCount: 3
     };
-    render(<TaskCard task={task} onMove={() => {}} />);
+    render(<TaskCard task={task} />);
 
     expect(screen.getByText("Fix auth")).toBeInTheDocument();
     expect(screen.getByText("HIGH")).toBeInTheDocument();
@@ -31,7 +31,7 @@ describe("TaskCard", () => {
   });
 
   it("does not show the comment-count badge when there are no comments", () => {
-    render(<TaskCard task={baseTask} onMove={() => {}} />);
+    render(<TaskCard task={baseTask} />);
     expect(screen.queryByText(/💬/)).toBeNull();
   });
 });
