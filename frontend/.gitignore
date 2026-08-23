@@ -1,0 +1,18 @@
+# build output
+.next/
+out/
+dist/
+*.tsbuildinfo
+
+# node
+node_modules/
+.pnp/
+npm-debug.log*
+
+# generated env-likes / editor
+.env*.local
+.env
+
+# OS
+.DS_Store
+Thumbs.db
