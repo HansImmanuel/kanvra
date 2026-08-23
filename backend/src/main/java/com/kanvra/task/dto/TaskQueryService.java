@@ -4,13 +4,13 @@ import com.kanvra.auth.model.User;
 import com.kanvra.auth.repository.UserRepository;
 import com.kanvra.board.model.BoardColumn;
 import com.kanvra.board.repository.BoardColumnRepository;
+import com.kanvra.comment.repository.CommentRepository;
 import com.kanvra.project.model.Label;
 import com.kanvra.project.repository.LabelRepository;
 import com.kanvra.task.model.Task;
 import com.kanvra.task.model.TaskLabel;
 import com.kanvra.task.repository.TaskLabelRepository;
 import com.kanvra.task.repository.TaskRepository;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,15 +30,17 @@ public class TaskQueryService {
     private final LabelRepository labelRepository;
     private final UserRepository userRepository;
     private final BoardColumnRepository columnRepository;
+    private final CommentRepository commentRepository;
 
     public TaskQueryService(TaskRepository taskRepository, TaskLabelRepository taskLabelRepository,
                             LabelRepository labelRepository, UserRepository userRepository,
-                            BoardColumnRepository columnRepository) {
+                            BoardColumnRepository columnRepository, CommentRepository commentRepository) {
         this.taskRepository = taskRepository;
         this.taskLabelRepository = taskLabelRepository;
         this.labelRepository = labelRepository;
         this.userRepository = userRepository;
         this.columnRepository = columnRepository;
+        this.commentRepository = commentRepository;
     }
 
     public Map<Long, List<TaskSummary>> summariesByColumn(List<Long> columnIds) {
@@ -48,10 +50,9 @@ public class TaskQueryService {
         List<Task> tasks = taskRepository.findByColumnIdInAndDeletedAtIsNull(columnIds);
 
         Set<Long> taskIds = tasks.stream().map(Task::getId).collect(Collectors.toSet());
-        List<TaskLabel> links = new ArrayList<>();
-        for (Long taskId : taskIds) {
-            links.addAll(taskLabelRepository.findByIdTaskId(taskId));
-        }
+
+        // Batched label links for ALL tasks in the board (one query, not one per task).
+        List<TaskLabel> links = taskLabelRepository.findByIdTaskIdIn(taskIds);
         Set<Long> labelIds = links.stream().map(l -> l.getId().getLabelId()).collect(Collectors.toSet());
         Map<Long, Label> labelsById = labelRepository.findAllById(labelIds).stream()
                 .collect(Collectors.toMap(Label::getId, Function.identity(), (a, b) -> a));
@@ -61,13 +62,18 @@ public class TaskQueryService {
         Map<Long, User> usersById = userRepository.findAllById(assigneeIds).stream()
                 .collect(Collectors.toMap(User::getId, Function.identity(), (a, b) -> a));
 
+        // One grouped COUNT query for all tasks (SPEC.md Appendix A commentCount).
+        Map<Long, Long> commentCounts = commentRepository.countByTaskIdGrouped(taskIds).stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1], (a, b) -> a));
+
         return tasks.stream()
                 .collect(Collectors.groupingBy(Task::getColumnId,
-                        Collectors.mapping(task -> toSummary(task, links, labelsById, usersById), Collectors.toList())));
+                        Collectors.mapping(task -> toSummary(task, links, labelsById, usersById, commentCounts),
+                                Collectors.toList())));
     }
 
     private TaskSummary toSummary(Task task, List<TaskLabel> links, Map<Long, Label> labelsById,
-                                  Map<Long, User> usersById) {
+                                  Map<Long, User> usersById, Map<Long, Long> commentCounts) {
         List<TaskSummary.LabelInfo> labels = links.stream()
                 .filter(l -> l.getId().getTaskId().equals(task.getId()))
                 .map(l -> labelsById.get(l.getId().getLabelId()))
@@ -84,7 +90,7 @@ public class TaskQueryService {
         }
 
         return new TaskSummary(task.getId(), task.getTitle(), task.getPriority(), task.getPosition(),
-                task.getVersion(), assignee, labels, task.getDueDate(), 0L);
+                task.getVersion(), assignee, labels, task.getDueDate(), commentCounts.getOrDefault(task.getId(), 0L));
     }
 
     public List<BoardColumn> columnsOf(Long boardId) {

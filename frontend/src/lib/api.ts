@@ -9,13 +9,17 @@
 // - On 401 the client silently refreshes once (POST /auth/refresh) and retries
 //   the original request exactly once — the local-session flow.
 
+import type { ApiErrorBody } from "../types";
+
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
-  constructor(status: number, code: string, message: string) {
+  readonly data: ApiErrorBody | null;
+  constructor(status: number, code: string, message: string, data: ApiErrorBody | null = null) {
     super(message || `Request failed with HTTP ${status}`);
     this.status = status;
     this.code = code || "UNKNOWN";
+    this.data = data;
   }
 }
 
@@ -65,13 +69,15 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
   }
 
   if (!response.ok) {
-    let body: { code?: string; message?: string } = {};
+    let body: ApiErrorBody = { status: response.status, code: "", message: "" };
     try {
       body = await response.json();
     } catch {
       /* non-JSON error body */
     }
-    throw new ApiError(response.status, body.code ?? "", body.message ?? `HTTP ${response.status}`);
+    // The parsed body (including TASK_VERSION_CONFLICT.currentState, SPEC §7.2)
+    // is exposed so callers can reconcile against the server's current state.
+    throw new ApiError(response.status, body.code ?? "", body.message ?? `HTTP ${response.status}`, body);
   }
 
   const text = await response.text();

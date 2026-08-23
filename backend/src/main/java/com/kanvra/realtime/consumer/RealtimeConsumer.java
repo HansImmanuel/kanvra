@@ -3,9 +3,9 @@ package com.kanvra.realtime.consumer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kanvra.kafka.config.KafkaConfig;
+import com.kanvra.kafka.deadletter.DeadLetterService;
 import com.kanvra.realtime.dto.RealtimeMessage;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -21,7 +21,9 @@ import org.springframework.stereotype.Component;
  *
  * <p>Realtime delivery is best-effort by design; the authoritative recovery is
  * the client re-fetching the board on reconnect (SPEC §15.2), not this stream.
- * Failures are rethrown so Kafka redelivers — a duplicate broadcast is harmless.
+ * Malformed/structurally broken envelopes are parked in the dead-letter table
+ * and acked; transient failures (e.g. broker down) are rethrown so Kafka
+ * redelivers — a duplicate broadcast is harmless (TECH_DOC.md §20).
  */
 @Component
 public class RealtimeConsumer {
@@ -30,10 +32,13 @@ public class RealtimeConsumer {
 
     private final SimpMessagingTemplate messagingTemplate;
     private final ObjectMapper objectMapper;
+    private final DeadLetterService deadLetterService;
 
-    public RealtimeConsumer(SimpMessagingTemplate messagingTemplate, ObjectMapper objectMapper) {
+    public RealtimeConsumer(SimpMessagingTemplate messagingTemplate, ObjectMapper objectMapper,
+                            DeadLetterService deadLetterService) {
         this.messagingTemplate = messagingTemplate;
         this.objectMapper = objectMapper;
+        this.deadLetterService = deadLetterService;
     }
 
     @KafkaListener(topics = KafkaConfig.DOMAIN_EVENTS_TOPIC, groupId = "kanvra-realtime")
@@ -55,8 +60,14 @@ public class RealtimeConsumer {
 
             messagingTemplate.convertAndSend("/topic/projects/" + projectId, out);
         } catch (IOException ex) {
-            log.error("Malformed realtime event; letting Kafka redeliver: {}", message, ex);
-            throw new UncheckedIOException(ex);
+            // Malformed JSON — permanent. Park + ack (TECH_DOC.md §20).
+            log.error("Malformed realtime event parked in dead-letter table: {}", message, ex);
+            deadLetterService.record("kanvra-realtime", message, ex);
+        } catch (IllegalArgumentException | NullPointerException ex) {
+            // Structurally broken envelope (missing payload/fields) — permanent.
+            // Park + ack so it cannot block the partition (TECH_DOC.md §20).
+            log.error("Broken realtime event parked in dead-letter table: {}", message, ex);
+            deadLetterService.record("kanvra-realtime", message, ex);
         } catch (RuntimeException ex) {
             log.error("Realtime broadcast failed; letting Kafka redeliver: {}", message, ex);
             throw ex;

@@ -146,7 +146,10 @@ public class BoardService {
     @Transactional
     public List<ColumnResponse> reorderColumns(Long userId, Long boardId, ReorderColumnsRequest request) {
         requireBoard(userId, boardId);
-        List<BoardColumn> columns = columnRepository.findByBoardIdOrderByPositionAsc(boardId);
+        // Pessimistically lock all of the board's columns in canonical id order so
+        // two concurrent reorders serialize instead of writing interleaved positions
+        // (canonical ordering also prevents deadlock — same rule as task moves).
+        List<BoardColumn> columns = columnRepository.lockColumnsByBoardId(boardId);
         Map<Long, BoardColumn> byId = columns.stream()
                 .collect(Collectors.toMap(BoardColumn::getId, Function.identity()));
         if (request.columnIds().size() != columns.size() || !byId.keySet().containsAll(request.columnIds())) {

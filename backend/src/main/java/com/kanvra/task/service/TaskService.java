@@ -129,7 +129,10 @@ public class TaskService {
     public TaskResponse update(Long userId, Long taskId, UpdateTaskRequest request) {
         Task task = requireTaskAccess(userId, taskId);
         if (!task.getVersion().equals(request.version())) {
-            throw new OptimisticLockException("Task was modified by someone else; refresh and retry");
+            // requireTaskAccess reads the current row, so the task here IS the
+            // server state the client should reconcile against (SPEC.md §7.2).
+            throw new OptimisticLockException("Task was modified by someone else; refresh and retry",
+                    TaskResponse.from(task));
         }
 
         // Same invariants as create(): an assignee must be a project member and
@@ -179,7 +182,10 @@ public class TaskService {
                     new ValidationFieldError("targetColumnId", "Column must belong to the same board")));
         }
         if (!task.getVersion().equals(request.version())) {
-            throw new OptimisticLockException("Task was modified by someone else; refresh and retry");
+            // lockById is a current read with a pessimistic lock, so the task
+            // here carries the server's actual current version (SPEC.md §7.2).
+            throw new OptimisticLockException("Task was modified by someone else; refresh and retry",
+                    TaskResponse.from(task));
         }
 
         Long projectId = projectIdOf(from.getBoardId());
@@ -230,11 +236,17 @@ public class TaskService {
         eventPublisher.publish(event);
 
         if (completed) {
+            Map<String, Object> completedPayload = new java.util.HashMap<>();
+            completedPayload.put("taskId", task.getId());
+            completedPayload.put("taskTitle", task.getTitle());
+            completedPayload.put("columnId", to.getId());
+            completedPayload.put("columnName", to.getName());
+            if (task.getAssigneeId() != null) {
+                completedPayload.put("assigneeId", task.getAssigneeId());
+            }
             eventPublisher.publish(createEvent(
                     KafkaEventTypes.TASK_COMPLETED, userId, projectId, task, actorName,
-                    Map.of("taskId", task.getId(), "taskTitle", task.getTitle(),
-                            "columnId", to.getId(), "columnName", to.getName(),
-                            "assigneeId", task.getAssigneeId())));
+                    completedPayload));
         }
 
         return TaskResponse.from(task).withEventId(event.eventId());

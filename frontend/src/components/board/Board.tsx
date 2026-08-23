@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { post } from "@/lib/api";
+import { post, ApiError } from "@/lib/api";
 import { realtime, noteLocalEventId } from "@/lib/websocket";
 import TaskCard from "@/components/task/TaskCard";
 import type { BoardDetail, TaskCard as TaskCardType, TaskResponse } from "@/types";
@@ -32,6 +32,10 @@ export default function Board({ board, onReload }: BoardProps) {
       noteLocalEventId(created.eventId);
       setTitles((t) => ({ ...t, [columnId]: "" }));
       onReload();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        onReload(); // server state changed; re-sync before the next action
+      }
     } finally {
       setBusy(false);
     }
@@ -47,6 +51,13 @@ export default function Board({ board, onReload }: BoardProps) {
       });
       noteLocalEventId(moved.eventId);
       onReload();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        // TASK_VERSION_CONFLICT — this card's version is stale. Re-fetch the board
+        // so the next action uses the server's current version instead of a loop of
+        // repeat 409s until a manual refresh (SPEC §7.2 + §15 resync).
+        onReload();
+      }
     } finally {
       setBusy(false);
     }

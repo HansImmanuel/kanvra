@@ -1,6 +1,7 @@
 package com.kanvra.notification.consumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kanvra.kafka.deadletter.DeadLetterService;
 import com.kanvra.notification.model.Notification;
 import com.kanvra.notification.repository.NotificationRepository;
 import java.util.UUID;
@@ -11,26 +12,31 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
  * NotificationConsumer mapping + idempotency (docs/SPEC.md §12, §14). Verifies
  * recipient selection (assignee, comment author, invited user), message
- * content, the self-comment suppression rule, and the unique-constraint
- * duplicate drop.
+ * content, the self-comment suppression rule, the unique-constraint duplicate
+ * drop, and the Sprint-4 dead-letter behavior for poison messages
+ * (TECH_DOC.md §20).
  */
 @ExtendWith(MockitoExtension.class)
 class NotificationConsumerTest {
 
     @Mock private NotificationRepository repository;
+    @Mock private DeadLetterService deadLetterService;
 
     private final ObjectMapper mapper = new ObjectMapper();
 
     private NotificationConsumer consumer() {
-        return new NotificationConsumer(repository, mapper);
+        return new NotificationConsumer(repository, mapper, deadLetterService);
     }
 
     private String envelope(String eventType, String payload) {
@@ -140,5 +146,33 @@ class NotificationConsumerTest {
         consumer().onDomainEvent(msg);
 
         verify(repository, never()).save(any(Notification.class));
+    }
+
+    @Test
+    void malformedEnvelopeIsParkedInDeadLetterTableNotAckedSilently() {
+        String raw = "this is not JSON {";
+        assertThatCode(() -> consumer().onDomainEvent(raw)).doesNotThrowAnyException();
+        verify(deadLetterService).record(eq("kanvra-notification"), eq(raw), any(Throwable.class));
+        verify(repository, never()).save(any(Notification.class));
+    }
+
+    @Test
+    void structurallyBrokenEnvelopeIsParkedInDeadLetterTable() {
+        String raw = "{\"eventType\":\"task.assigned\",\"payload\":{\"assigneeId\":9}}";
+        assertThatCode(() -> consumer().onDomainEvent(raw)).doesNotThrowAnyException();
+        verify(deadLetterService).record(eq("kanvra-notification"), eq(raw), any(Throwable.class));
+        verify(repository, never()).save(any(Notification.class));
+    }
+
+    @Test
+    void transientFailureIsRethrownNotParked() {
+        String msg = envelope("task.assigned",
+                "{\"taskId\":5,\"taskTitle\":\"Fix auth\",\"assigneeId\":9,\"actorName\":\"Hans\"}");
+        when(repository.save(any(Notification.class))).thenThrow(new RuntimeException("db down"));
+
+        assertThatCode(() -> consumer().onDomainEvent(msg))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("db down");
+        verifyNoInteractions(deadLetterService);
     }
 }

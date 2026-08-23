@@ -67,6 +67,7 @@ cd backend
 # frontend
 cd frontend
 npm run typecheck
+npm run test
 npm run build
 ```
 
@@ -85,13 +86,21 @@ Sensitive/non-default settings are supplied through environment variables (see `
 
 ## Known gaps (documented decisions)
 
-- **Dead-letter topic (DLT)** for failed consumer messages is deferred — see `TECH_DOC.md` §20. Consumer
-  failures are logged and retried via Kafka's built-in retry; a DLT will be added once consumers are proven stable.
+- **Dead-letter handling** is table-based since Sprint 4: poison messages (malformed JSON, missing `eventId`)
+  are parked in the `dead_letter_events` table and acked so they cannot block a Kafka partition; transient
+  failures still rethrow for Kafka redelivery. Recovery is a documented manual/ops step (`GET
+  /api/v1/dead-letters` lists recent rows; a scheduled job purges after 30 days). See `TECH_DOC.md` §20.
 - **Access tokens are not revocable** — exposure is bounded by their short (~30 min) expiry. Refresh tokens *are*
   revocable server-side since Sprint 2: rotation revokes the old token, reuse detection revokes the family, and
   logout revokes all active refresh tokens (see `SPEC.md` §3.4/§3.5).
 - **Rate limiter is per-instance** (in-memory bucket, not distributed) — fine for the single-instance MVP, but the
   effective limit multiplies by replica count if the backend is ever scaled out.
+- **Outbox publisher retries are throttled** with exponential backoff + jitter (bounded at 30s) so a down broker
+  is not hammered while the backlog is retained safely in PostgreSQL.
+- **Real-time fallback**: if the WebSocket endpoint is unreachable for a sustained window, the frontend falls back
+  to polling the board REST endpoint (authoritative resync) and periodically re-checks the socket.
+- **Frontend Dockerfile** is not yet provided (applications run locally in dev); the backend image builds in CI
+  so it does not bitrot. Containerizing the Next.js app is deferred per `TECH_DOC.md` §21.
 
 ## Repository layout
 

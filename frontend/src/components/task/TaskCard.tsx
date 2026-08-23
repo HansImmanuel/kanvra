@@ -36,7 +36,10 @@ export default function TaskCard({ task, onMove }: TaskCardProps) {
           ))}
         </div>
       )}
-      <div className="mt-2 text-xs text-slate-500">v{task.version}</div>
+      <div className="mt-2 text-xs text-slate-500">
+        {task.commentCount > 0 && <>💬 {task.commentCount} · </>}
+        v{task.version}
+      </div>
     </div>
   );
 }

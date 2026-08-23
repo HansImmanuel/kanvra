@@ -13,6 +13,7 @@ import com.kanvra.project.repository.LabelRepository;
 import com.kanvra.project.repository.ProjectMemberRepository;
 import com.kanvra.project.service.ProjectAccessService;
 import com.kanvra.task.dto.CreateTaskRequest;
+import com.kanvra.task.dto.MoveTaskRequest;
 import com.kanvra.task.dto.TaskResponse;
 import com.kanvra.task.dto.UpdateTaskRequest;
 import com.kanvra.task.model.IdempotencyKey;
@@ -39,6 +40,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -108,6 +110,63 @@ class TaskServiceTest {
         assertThatThrownBy(() -> service.update(1L, 7L,
                 new UpdateTaskRequest("Stale write", null, null, null, null, null, 4)))
                 .isInstanceOf(OptimisticLockException.class);
+    }
+
+    @Test
+    void updateVersionConflictCarriesCurrentServerState() {
+        Task task = new Task();
+        ReflectionTestUtils.setField(task, "id", 7L);
+        task.setColumnId(1L);
+        task.setTitle("Server current");
+        task.setVersion(5);
+
+        BoardColumn column = new BoardColumn();
+        column.setBoardId(2L);
+        Board board = new Board();
+        board.setProjectId(3L);
+
+        when(taskRepository.findActiveById(7L)).thenReturn(Optional.of(task));
+        when(columnRepository.findById(1L)).thenReturn(Optional.of(column));
+        when(boardRepository.findById(2L)).thenReturn(Optional.of(board));
+
+        OptimisticLockException ex = catchThrowableOfType(OptimisticLockException.class,
+                () -> service.update(1L, 7L,
+                        new UpdateTaskRequest("Stale write", null, null, null, null, null, 4)));
+
+        // SPEC.md §7.2: the conflict response must carry the server's current task
+        // so the client can re-render without a follow-up GET.
+        assertThat(ex).isNotNull();
+        assertThat(ex.getCurrentState()).isInstanceOf(TaskResponse.class);
+        TaskResponse state = (TaskResponse) ex.getCurrentState();
+        assertThat(state.id()).isEqualTo(7L);
+        assertThat(state.version()).isEqualTo(5);
+        assertThat(state.title()).isEqualTo("Server current");
+    }
+
+    @Test
+    void moveVersionConflictCarriesCurrentServerState() {
+        Task task = new Task();
+        ReflectionTestUtils.setField(task, "id", 7L);
+        task.setColumnId(1L);
+        task.setTitle("Server current");
+        task.setVersion(5);
+
+        BoardColumn column = new BoardColumn();
+        column.setBoardId(2L);
+        Board board = new Board();
+        board.setProjectId(3L);
+
+        when(taskRepository.lockById(7L)).thenReturn(Optional.of(task));
+        when(columnRepository.findById(1L)).thenReturn(Optional.of(column));
+        when(boardRepository.findById(2L)).thenReturn(Optional.of(board));
+
+        OptimisticLockException ex = catchThrowableOfType(OptimisticLockException.class,
+                () -> service.move(1L, 7L, new MoveTaskRequest(1L, 0, 4)));
+
+        assertThat(ex).isNotNull();
+        assertThat(ex.getCurrentState()).isInstanceOf(TaskResponse.class);
+        TaskResponse state = (TaskResponse) ex.getCurrentState();
+        assertThat(state.version()).isEqualTo(5);
     }
 
     @Test

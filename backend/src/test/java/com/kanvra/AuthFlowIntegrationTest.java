@@ -75,11 +75,13 @@ class AuthFlowIntegrationTest extends AbstractIntegrationTest {
     void invalidRegistrationReturns422WithFieldErrors() throws Exception {
         mockMvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"","email":"not-an-email","password":"short"}
+                                {"name":"","email":"not-an-email","password":"Pass1"}
                                 """))
                 .andExpect(status().is(422))
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
                 .andExpect(jsonPath("$.errors").isArray())
+                // name (blank) + email (invalid) + password (too short) — "Pass1"
+                // satisfies the letter+digit pattern so it fails @Size only.
                 .andExpect(jsonPath("$.errors.length()").value(3));
     }
 

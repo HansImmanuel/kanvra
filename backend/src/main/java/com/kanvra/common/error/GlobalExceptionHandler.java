@@ -52,6 +52,20 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(ex.getStatus()).body(ApiError.of(ex.getStatus(), ex.getCode(), ex.getMessage()));
     }
 
+    @ExceptionHandler(OptimisticLockException.class)
+    public ResponseEntity<ApiError> handleOptimisticConflict(OptimisticLockException ex) {
+        // SPEC.md §7.2: a version conflict must return the server's current task
+        // state so the client can re-render instead of staying stuck on a stale version.
+        ApiError error = new ApiError(
+                java.time.OffsetDateTime.now(),
+                409,
+                "TASK_VERSION_CONFLICT",
+                ex.getMessage(),
+                null,
+                ex.getCurrentState());
+        return ResponseEntity.status(409).body(error);
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiError> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
         log.warn("Data integrity violation", ex);

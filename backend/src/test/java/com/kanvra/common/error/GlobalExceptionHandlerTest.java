@@ -34,4 +34,21 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getStatusCode().value()).isEqualTo(409);
         assertThat(response.getBody().code()).isEqualTo("TASK_VERSION_CONFLICT");
     }
+
+    @Test
+    void optimisticLockExceptionCarriesCurrentState() {
+        Task current = new Task();
+        org.springframework.test.util.ReflectionTestUtils.setField(current, "id", 7L);
+        current.setTitle("Server current");
+        current.setVersion(5);
+
+        ResponseEntity<ApiError> response = handler.handleOptimisticConflict(
+                new OptimisticLockException("stale version",
+                        com.kanvra.task.dto.TaskResponse.from(current)));
+
+        assertThat(response.getStatusCode().value()).isEqualTo(409);
+        assertThat(response.getBody().code()).isEqualTo("TASK_VERSION_CONFLICT");
+        // The conflict body must expose the server's current task (SPEC.md §7.2).
+        assertThat(response.getBody().currentState()).isEqualTo(com.kanvra.task.dto.TaskResponse.from(current));
+    }
 }

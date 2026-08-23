@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kanvra.activity.model.Activity;
 import com.kanvra.activity.repository.ActivityRepository;
+import com.kanvra.kafka.deadletter.DeadLetterService;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
  * user-readable activity records from denormalized event payloads. Idempotent
  * via the unique {@code activities.event_id} constraint — a duplicate delivery
  * is detected and dropped instead of creating a second record.
+ *
+ * <p>Failure split (TECH_DOC.md §20): malformed/structurally broken envelopes
+ * are permanent and are parked in the dead-letter table then acked, so a poison
+ * pill cannot block the partition forever; transient failures (DB/Kafka/service)
+ * are rethrown so Kafka redelivers.
  */
 @Component
 public class ActivityConsumer {
@@ -27,10 +32,13 @@ public class ActivityConsumer {
 
     private final ActivityRepository activityRepository;
     private final ObjectMapper objectMapper;
+    private final DeadLetterService deadLetterService;
 
-    public ActivityConsumer(ActivityRepository activityRepository, ObjectMapper objectMapper) {
+    public ActivityConsumer(ActivityRepository activityRepository, ObjectMapper objectMapper,
+                            DeadLetterService deadLetterService) {
         this.activityRepository = activityRepository;
         this.objectMapper = objectMapper;
+        this.deadLetterService = deadLetterService;
     }
 
     @KafkaListener(topics = "kanvra.domain-events", groupId = "kanvra-activity")
@@ -56,15 +64,18 @@ public class ActivityConsumer {
             // Concurrent/duplicate delivery raced ahead of us — the unique
             // activities.event_id constraint already recorded this event.
             log.debug("Duplicate activity event dropped: {}", message);
+        } catch (IllegalArgumentException | NullPointerException ex) {
+            // Structurally broken envelope (missing eventId, unparseable type) —
+            // permanent, redelivery cannot fix it. Park + ack (TECH_DOC.md §20).
+            log.error("Broken activity event parked in dead-letter table: {}", message, ex);
+            deadLetterService.record("kanvra-activity", message, ex);
         } catch (IOException ex) {
-            // Malformed envelope — not a duplicate, so it must not be silently
-            // acked. Let Kafka redeliver (a DLT is deferred, TECH_DOC.md §20).
-            log.error("Malformed activity event; letting Kafka redeliver: {}", message, ex);
-            throw new UncheckedIOException(ex);
+            // Malformed JSON — permanent. Park + ack (TECH_DOC.md §20).
+            log.error("Malformed activity event parked in dead-letter table: {}", message, ex);
+            deadLetterService.record("kanvra-activity", message, ex);
         } catch (RuntimeException ex) {
-            // Any other failure must NOT be silently acked: rethrow so Spring
-            // Kafka redelivers the record (AGENT.md §12 — do not swallow Kafka
-            // errors). Redelivery + idempotency is the retry fabric for now.
+            // Transient (DB down, etc.) — must NOT be acked: rethrow so Spring
+            // Kafka redelivers the record (AGENT.md §12).
             log.error("Failed to process activity event; letting Kafka redeliver: {}", message, ex);
             throw ex;
         }

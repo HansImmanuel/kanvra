@@ -3,6 +3,7 @@ package com.kanvra;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -262,6 +263,50 @@ class ProjectTaskApiIntegrationTest extends AbstractIntegrationTest {
         } finally {
             pool.shutdownNow();
         }
+    }
+
+    @Test
+    void concurrentSameColumnMovesKeepDensePositions() throws Exception {
+        // SPEC.md §19: "two concurrent drags in the same column do not corrupt
+        // ordering." The move serializes on the column's row lock, so whatever the
+        // interleaving, the final column must expose dense, unique positions 0..n-1
+        // rather than gaps or duplicates.
+        String owner = register("dense-positions@example.com");
+        long projectId = idOf(mockMvc.perform(post("/api/v1/projects")
+                        .header("Authorization", bearer(owner))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Dense\"}"))
+                .andExpect(status().isCreated())
+                .andReturn());
+        long boardId = firstBoardId(projectId, owner);
+        long columnId = columnId(boardId, 0, owner);
+
+        long taskA = idOf(createColumnTask(columnId, "Task A", "uuid-dense-a", owner));
+        long taskB = idOf(createColumnTask(columnId, "Task B", "uuid-dense-b", owner));
+        long taskC = idOf(createColumnTask(columnId, "Task C", "uuid-dense-c", owner));
+
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            Future<Integer> moveA = pool.submit(() -> moveStatusCode(taskA, columnId, owner));
+            Future<Integer> moveC = pool.submit(() -> moveStatusCode(taskC, columnId, owner));
+
+            int statusA = moveA.get(45, TimeUnit.SECONDS);
+            int statusC = moveC.get(45, TimeUnit.SECONDS);
+            assertThat(statusA).isIn(200, 409);
+            assertThat(statusC).isIn(200, 409);
+        } finally {
+            pool.shutdownNow();
+        }
+
+        JsonNode board = tree(mockMvc.perform(get("/api/v1/boards/" + boardId)
+                        .header("Authorization", bearer(owner)))
+                .andExpect(status().isOk())
+                .andReturn());
+        List<Integer> positions = new java.util.ArrayList<>();
+        board.get("columns").get(0).get("tasks")
+                .forEach(t -> positions.add(t.get("position").asInt()));
+
+        assertThat(positions).containsExactlyInAnyOrder(0, 1, 2);
     }
 
     // ---------------------------------------------------------------

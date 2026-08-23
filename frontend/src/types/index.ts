@@ -75,3 +75,14 @@ export interface ApiPage<T> {
   totalElements: number;
   totalPages: number;
 }
+
+// §17.1 error body. currentState is present only on TASK_VERSION_CONFLICT so the
+// UI can re-sync a stale card against the server's current task.
+export interface ApiErrorBody {
+  timestamp?: string;
+  status: number;
+  code: string;
+  message: string;
+  errors?: { field: string; message: string }[] | null;
+  currentState?: TaskResponse | null;
+}

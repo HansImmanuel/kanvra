@@ -2,10 +2,10 @@ package com.kanvra.notification.consumer;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kanvra.kafka.deadletter.DeadLetterService;
 import com.kanvra.notification.model.Notification;
 import com.kanvra.notification.repository.NotificationRepository;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,8 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
  * Notification Consumer (group {@code kanvra-notification}, docs/SPEC.md §14 /
  * §12): turns a subset of domain events into user notifications. Idempotent via
  * the unique {@code (recipient_id, event_id)} constraint — a duplicate delivery
- * is detected and dropped. Malformed/unexpected events are rethrown so Kafka
- * redelivers them rather than silently acking (AGENT.md §12).
+ * is detected and dropped. Malformed/structurally broken events are parked in
+ * the dead-letter table and acked; transient failures are rethrown so Kafka
+ * redelivers them (AGENT.md §12, TECH_DOC.md §20).
  *
  * <p>No PostgreSQL reads on the hot path: the denormalized {@code assigneeId} /
  * {@code authorId} members are expected to be present in the event payloads
@@ -32,10 +33,13 @@ public class NotificationConsumer {
 
     private final NotificationRepository notificationRepository;
     private final ObjectMapper objectMapper;
+    private final DeadLetterService deadLetterService;
 
-    public NotificationConsumer(NotificationRepository notificationRepository, ObjectMapper objectMapper) {
+    public NotificationConsumer(NotificationRepository notificationRepository, ObjectMapper objectMapper,
+                                DeadLetterService deadLetterService) {
         this.notificationRepository = notificationRepository;
         this.objectMapper = objectMapper;
+        this.deadLetterService = deadLetterService;
     }
 
     @KafkaListener(topics = "kanvra.domain-events", groupId = "kanvra-notification")
@@ -59,10 +63,19 @@ public class NotificationConsumer {
             // Concurrent/duplicate delivery raced ahead of us — the unique
             // (recipient_id, event_id) constraint already recorded this one.
             log.debug("Duplicate notification event dropped: {}", message);
+        } catch (IllegalArgumentException | NullPointerException ex) {
+            // Structurally broken envelope (missing/unparseable eventId, absent
+            // recipient) — permanent, redelivery cannot fix it. Park + ack
+            // (TECH_DOC.md §20).
+            log.error("Broken notification event parked in dead-letter table: {}", message, ex);
+            deadLetterService.record("kanvra-notification", message, ex);
         } catch (IOException ex) {
-            log.error("Malformed notification event; letting Kafka redeliver: {}", message, ex);
-            throw new UncheckedIOException(ex);
+            // Malformed JSON — permanent. Park + ack (TECH_DOC.md §20).
+            log.error("Malformed notification event parked in dead-letter table: {}", message, ex);
+            deadLetterService.record("kanvra-notification", message, ex);
         } catch (RuntimeException ex) {
+            // Transient (DB down, etc.) — must NOT be acked: rethrow so Spring
+            // Kafka redelivers the record (AGENT.md §12).
             log.error("Failed to process notification event; letting Kafka redeliver: {}", message, ex);
             throw ex;
         }

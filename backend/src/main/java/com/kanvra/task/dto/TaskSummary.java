@@ -5,8 +5,8 @@ import java.util.List;
 
 /**
  * Task card data embedded in the nested board response (docs/SPEC.md Appendix A).
- * {@code commentCount} is included in the shape; comments ship in a later sprint
- * so it is always 0 for now.
+ * {@code commentCount} is the active-comment count for the task, loaded by a
+ * single grouped query in {@code TaskQueryService} (no N+1).
  */
 public record TaskSummary(
         Long id,
