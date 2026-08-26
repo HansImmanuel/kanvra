@@ -13,6 +13,8 @@ interface ModalProps {
   onClose: () => void;
   /** Title shown in the header edge + used as the dialog's accessible name. */
   title?: string;
+  /** Blurs the dimmed backdrop (used for the Activity pop-up over the board). */
+  backdropBlur?: boolean;
   children: ReactNode;
   /** Optional max-width class; defaults to max-w-lg. */
   widthClass?: string;
@@ -28,7 +30,7 @@ interface ModalProps {
  *
  * Used by the task detail, project-settings, and notification surfaces.
  */
-export default function Modal({ open, onClose, title, children, widthClass = "max-w-lg" }: ModalProps) {
+export default function Modal({ open, onClose, title, children, widthClass = "max-w-lg", backdropBlur = false }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<Element | null>(null);
 
@@ -73,7 +75,7 @@ export default function Modal({ open, onClose, title, children, widthClass = "ma
       <div
         data-testid="modal-backdrop"
         aria-hidden="true"
-        className="absolute inset-0 bg-slate-900/40"
+        className={`absolute inset-0 bg-slate-900/40 ${backdropBlur ? "backdrop-blur-sm" : ""}`}
         onClick={onClose}
       />
       <div

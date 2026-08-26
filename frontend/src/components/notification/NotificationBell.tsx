@@ -64,7 +64,7 @@ export default function NotificationBell() {
       await reload();
       if (n.projectId != null) {
         setOpen(false);
-        router.push(`/projects/${n.projectId}`);
+        router.push(`/projects/${n.projectId}/board`);
       }
     } finally {
       setBusy(false);

@@ -82,7 +82,7 @@ export default function DashboardPage() {
           {projects.map((project) => (
             <li key={project.id}>
               <a
-                href={`/projects/${project.id}`}
+                href={`/projects/${project.id}/board`}
                 className="block rounded-lg border border-slate-300 bg-white p-4 shadow-sm hover:border-slate-500"
               >
                 <p className="font-medium text-slate-800">{project.name}</p>

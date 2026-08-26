@@ -82,7 +82,7 @@ describe("NotificationBell", () => {
     fireEvent.click(await screen.findByText(/assigned you the task 'Fix auth'/));
 
     await waitFor(() => expect(actions.markNotificationRead).toHaveBeenCalledWith(1));
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/projects/10"));
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/projects/10/board"));
   });
 
   it("mark-all-read hits the bulk endpoint and refreshes", async () => {
