@@ -40,7 +40,7 @@ board updates.
                                    activity · notification · realtime
 ```
 
-## Feature status (end of Sprint 4)
+## Feature status (Sprint 5 — first post-MVP feature shipped)
 
 - **Auth** — register/login/logout, refresh-token rotation with reuse detection, CSRF double-submit, rate limiting
 - **Projects & members** — CRUD, archive, member add/remove (OWNER-gated), settings UI
@@ -52,6 +52,10 @@ board updates.
 - **Activity feed** — async via the Kafka Activity Consumer, visible in the project panel
 - **Notifications** — Kafka-driven, bell with unread badge, mark read/read-all, deep-linking via denormalized `projectId`
 - **Realtime** — STOMP broadcast to `/topic/projects/{id}`, reconnect resync, WS-unreachable polling fallback
+- **Analytics (FR-017, post-MVP/Sprint 5)** — Kafka Analytics Consumer (group `kanvra-analytics`) accumulates
+  per-project counters (created/completed/moved/deleted/comments) idempotently via the `analytics_events.event_id`
+  ledger; `GET /api/v1/projects/{projectId}/analytics` + a project-page AnalyticsPanel with live cards-per-column
+  (derived from the authoritative board endpoint, not a second store). See `docs/SPEC.md` §12.5.
 - **Reliability hardening** — transactional outbox with backoff/jitter publisher, dead-letter table for poison pills,
   optimistic concurrency everywhere, idempotency keys with scheduled purge
 

@@ -8,6 +8,7 @@ import BoardSwitcher from "@/components/board/BoardSwitcher";
 import ProjectSettingsPanel from "@/components/project/ProjectSettingsPanel";
 import NotificationBell from "@/components/notification/NotificationBell";
 import ActivityPanel from "@/components/activity/ActivityPanel";
+import AnalyticsPanel from "@/components/analytics/AnalyticsPanel";
 import { createBoard as createBoardAction } from "@/lib/actions";
 import type { BoardDetail, BoardRef, Project } from "@/types";
 
@@ -161,7 +162,8 @@ export default function ProjectPage({
         <ProjectSettingsPanel project={project} onClose={() => setShowSettings(false)} />
       )}
       {project && (
-        <div className="mt-6 max-w-3xl">
+        <div className="mt-6 grid gap-6 md:grid-cols-2">
+          <AnalyticsPanel projectId={project.id} />
           <ActivityPanel projectId={project.id} />
         </div>
       )}

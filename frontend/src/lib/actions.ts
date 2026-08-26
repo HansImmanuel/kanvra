@@ -15,6 +15,7 @@ import type {
   Label,
   Member,
   Notification,
+  ProjectAnalytics,
   TaskResponse,
   TaskUpdate
 } from "@/types";
@@ -87,6 +88,10 @@ export const reorderColumns = (boardId: number, columnIds: number[]): Promise<Co
 // --- Activity (SPEC §11) -------------------------------------------------
 export const listActivity = (projectId: number, page = 0, size = 20): Promise<ApiPage<Activity>> =>
   get<ApiPage<Activity>>(`/api/v1/projects/${projectId}/activity?page=${page}&size=${size}`);
+
+// --- Analytics (SPEC §12.5, post-MVP/Sprint 5) ---------------------------
+export const getProjectAnalytics = (projectId: number): Promise<ProjectAnalytics> =>
+  get<ProjectAnalytics>(`/api/v1/projects/${projectId}/analytics`);
 
 // --- Notifications (SPEC §12) -------------------------------------------
 export const listNotifications = (page = 0, size = 20): Promise<ApiPage<Notification>> =>

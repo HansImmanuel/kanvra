@@ -163,3 +163,25 @@ export interface Notification {
   readAt: string | null;
   createdAt: string;
 }
+
+// §12.5 analytics (ProjectAnalyticsResponse — post-MVP Sprint 5, FR-017)
+export interface AnalyticsCounters {
+  tasksCreated: number;
+  tasksCompleted: number;
+  tasksMoved: number;
+  tasksDeleted: number;
+  commentsCreated: number;
+}
+
+export interface CardsPerColumn {
+  columnId: number;
+  columnName: string;
+  position: number;
+  count: number;
+}
+
+export interface ProjectAnalytics {
+  projectId: number;
+  counters: AnalyticsCounters;
+  cardsPerColumn: CardsPerColumn[];
+}

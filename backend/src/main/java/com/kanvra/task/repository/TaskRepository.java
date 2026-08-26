@@ -25,4 +25,9 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 
     @Query("select t from Task t where t.id = :id and t.deletedAt is null")
     Optional<Task> findActiveById(@Param("id") Long id);
+
+    /** Per-column active-task counts — used by the analytics endpoint (SPEC §12.5). */
+    @Query("select t.columnId, count(t) from Task t "
+            + "where t.columnId in :columnIds and t.deletedAt is null group by t.columnId")
+    List<Object[]> countByColumnIdInGrouped(@Param("columnIds") List<Long> columnIds);
 }
