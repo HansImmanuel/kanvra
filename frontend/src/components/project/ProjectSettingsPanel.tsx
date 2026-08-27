@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Modal, Avatar, LabelChip, Select } from "@/components/ui";
+import { Button, Input, Modal, Avatar, LabelChip, Select } from "@/components/ui";
 import { currentUserSafe } from "@/lib/auth";
 import {
   addMember,
@@ -97,15 +97,15 @@ export default function ProjectSettingsPanel({ project, onClose }: ProjectSettin
                   <span className="font-medium text-slate-700">{m.name}</span>
                   <span className="rounded bg-slate-200 px-1.5 text-xs text-slate-600">{m.role}</span>
                   {isOwner && m.id !== project.ownerId && (
-                    <button
-                      type="button"
+                    <Button
+                      variant="dangerLink"
+                      className="ml-auto"
                       disabled={busy}
                       aria-label={`Remove ${m.name}`}
-                      className="ml-auto rounded px-1 text-xs text-slate-500 hover:bg-red-100 hover:text-red-700 disabled:opacity-50"
                       onClick={() => void run(() => removeMember(project.id, m.id))}
                     >
                       Remove
-                    </button>
+                    </Button>
                   )}
                 </li>
               ))}
@@ -122,11 +122,12 @@ export default function ProjectSettingsPanel({ project, onClose }: ProjectSettin
                   ).then(() => setNewMemberId(""));
                 }}
               >
-                <input
+                <Input
+                  fieldSize="sm"
+                  style={{ width: "7rem" }}
                   aria-label="User id"
                   placeholder="User id"
                   inputMode="numeric"
-                  className="w-28 rounded border border-slate-300 px-2 py-1 text-sm"
                   value={newMemberId}
                   onChange={(e) => setNewMemberId(e.target.value)}
                 />
@@ -139,13 +140,14 @@ export default function ProjectSettingsPanel({ project, onClose }: ProjectSettin
                     { value: "OWNER", label: "OWNER" }
                   ]}
                 />
-                <button
-                  type="submit"
+                <Button
+                  variant="primary"
+                  size="md"
                   disabled={busy || !newMemberId.trim()}
-                  className="rounded bg-slate-700 px-3 py-1 text-sm text-white disabled:opacity-50"
+                  type="submit"
                 >
                   Add member
-                </button>
+                </Button>
               </form>
             )}
           </section>
@@ -158,18 +160,19 @@ export default function ProjectSettingsPanel({ project, onClose }: ProjectSettin
                 editingId === l.id ? (
                   <li key={l.id} className="rounded border border-slate-200 p-2">
                     <div className="flex items-center gap-2">
-                      <input
+                      <Input
+                        fieldSize="sm"
+                        style={{ width: "10rem" }}
                         aria-label="Edit label name"
-                        className="w-40 rounded border border-slate-300 px-2 py-1 text-sm"
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
                       />
                       <PalettePicker value={editColor} onChange={setEditColor} />
                       <span className="ml-auto flex gap-1">
-                        <button
-                          type="button"
+                        <Button
+                          variant="primary"
+                          size="sm"
                           disabled={busy}
-                          className="rounded bg-slate-700 px-2 py-0.5 text-xs text-white disabled:opacity-50"
                           onClick={() =>
                             void run(() => updateLabel(l.id, editName.trim() || l.name, editColor)).then(() =>
                               setEditingId(null)
@@ -177,14 +180,14 @@ export default function ProjectSettingsPanel({ project, onClose }: ProjectSettin
                           }
                         >
                           Save
-                        </button>
-                        <button
-                          type="button"
-                          className="rounded border border-slate-300 px-2 py-0.5 text-xs"
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => setEditingId(null)}
                         >
                           Cancel
-                        </button>
+                        </Button>
                       </span>
                     </div>
                   </li>
@@ -192,9 +195,8 @@ export default function ProjectSettingsPanel({ project, onClose }: ProjectSettin
                   <li key={l.id} className="flex items-center gap-2 rounded border border-slate-200 bg-slate-50 p-2">
                     <LabelChip name={l.name} color={l.color} />
                     <span className="ml-auto flex gap-1">
-                      <button
-                        type="button"
-                        className="rounded px-1 text-xs text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+                      <Button
+                        variant="link"
                         onClick={() => {
                           setEditingId(l.id);
                           setEditName(l.name);
@@ -202,16 +204,15 @@ export default function ProjectSettingsPanel({ project, onClose }: ProjectSettin
                         }}
                       >
                         Edit
-                      </button>
-                      <button
-                        type="button"
+                      </Button>
+                      <Button
+                        variant="dangerLink"
                         disabled={busy}
                         aria-label={`Delete ${l.name}`}
-                        className="rounded px-1 text-xs text-slate-500 hover:bg-red-100 hover:text-red-700 disabled:opacity-50"
                         onClick={() => void run(() => deleteLabel(l.id))}
                       >
                         Delete
-                      </button>
+                      </Button>
                     </span>
                   </li>
                 )
@@ -229,21 +230,23 @@ export default function ProjectSettingsPanel({ project, onClose }: ProjectSettin
                 );
               }}
             >
-              <input
+              <Input
+                fieldSize="sm"
+                style={{ width: "11rem" }}
                 aria-label="New label name"
                 placeholder="New label name"
-                className="w-44 rounded border border-slate-300 px-2 py-1 text-sm"
                 value={newLabelName}
                 onChange={(e) => setNewLabelName(e.target.value)}
               />
               <PalettePicker value={newLabelColor} onChange={setNewLabelColor} />
-              <button
+              <Button
+                variant="primary"
+                size="md"
                 type="submit"
                 disabled={busy || !newLabelName.trim()}
-                className="rounded bg-slate-700 px-3 py-1 text-sm text-white disabled:opacity-50"
               >
                 Create label
-              </button>
+              </Button>
             </form>
           </section>
 

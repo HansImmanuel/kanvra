@@ -1,1 +1,37 @@
 @import "tailwindcss";
+
+/*
+ * Design tokens (Tailwind v4 @theme). Namespaced additions only — no default
+ * palette overrides — so every utility already used across the codebase keeps
+ * its current meaning. Mirrors src/lib/design-tokens.ts; keep the two in sync.
+ */
+@theme {
+  /* Surfaces */
+  --color-canvas: #f1f5f9;        /* app background (matches body bg-slate-100) */
+  --color-surface: #ffffff;
+  --color-elevated: #f8fafc;
+  --color-edge: #e2e8f0;
+  --color-edge-strong: #cbd5e1;
+
+  /* Brand / actions */
+  --color-primary: #334155;
+  --color-primary-hover: #475569;
+  --color-accent: #6366f1;
+
+  /* Feedback */
+  --color-danger: #dc2626;
+
+  /* Radius scale */
+  --radius-field: 0.25rem;
+  --radius-panel: 0.5rem;
+  --radius-modal: 0.75rem;
+
+  /* Shadows */
+  --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-toast: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-overlay: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  /* Named widths */
+  --spacing-sidebar: 12rem;       /* w-sidebar */
+  --spacing-column: 18rem;        /* w-column */
+}

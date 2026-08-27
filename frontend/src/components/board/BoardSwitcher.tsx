@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { Button } from "@/components/ui";
 import type { BoardRef } from "@/types";
 
 interface BoardSwitcherProps {
@@ -57,23 +58,19 @@ export default function BoardSwitcher({ boards, activeId, onSelect, onCreate, bu
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
-          <button
-            type="submit"
-            disabled={busy || !name.trim()}
-            className="rounded bg-slate-700 px-2 py-1 text-xs text-white disabled:opacity-50"
-          >
+          <Button type="submit" variant="primary" size="sm" disabled={busy || !name.trim()}>
             Create
-          </button>
-          <button
-            type="button"
-            className="rounded border border-slate-300 px-2 py-1 text-xs"
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => {
               setCreating(false);
               setName("");
             }}
           >
             Cancel
-          </button>
+          </Button>
         </form>
       ) : (
         <button

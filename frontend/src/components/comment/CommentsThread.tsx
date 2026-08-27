@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Avatar } from "@/components/ui";
+import { Avatar, Button, Textarea } from "@/components/ui";
 import { currentUserSafe } from "@/lib/auth";
 import { realtime } from "@/lib/websocket";
 import { relativeTime } from "@/lib/time";
@@ -132,52 +132,42 @@ export default function CommentsThread({ taskId }: CommentsThreadProps) {
               </span>
               {me?.id === c.author.id && editingId !== c.id && (
                 <span className="ml-auto flex gap-1">
-                  <button
-                    type="button"
-                    className="rounded px-1 text-xs text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+                  <Button
+                    variant="link"
                     onClick={() => {
                       setEditingId(c.id);
                       setEditText(c.content);
                     }}
                   >
                     Edit
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
+                    variant="dangerLink"
                     disabled={busy}
-                    className="rounded px-1 text-xs text-slate-500 hover:bg-red-100 hover:text-red-700 disabled:opacity-50"
                     onClick={() => void remove(c.id)}
                   >
                     Delete
-                  </button>
+                  </Button>
                 </span>
               )}
             </div>
 
             {editingId === c.id ? (
               <div className="mt-1 space-y-1">
-                <textarea
+                <Textarea
                   aria-label="Edit comment"
-                  className="w-full rounded border border-slate-300 px-2 py-1 text-sm min-h-12"
+                  fieldSize="sm"
+                  className="min-h-12"
                   value={editText}
                   onChange={(e) => setEditText(e.target.value)}
                 />
                 <div className="flex gap-2">
-                  <button
-                    type="button"
-                    disabled={busy}
-                    className="rounded bg-slate-700 px-2 py-0.5 text-xs text-white disabled:opacity-50"
-                    onClick={() => void saveEdit(c.id)}
-                  >
+                  <Button variant="primary" size="sm" disabled={busy} onClick={() => void saveEdit(c.id)}>
                     Save
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded border border-slate-300 px-2 py-0.5 text-xs"
-                    onClick={() => setEditingId(null)}
-                  >
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setEditingId(null)}>
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -190,34 +180,31 @@ export default function CommentsThread({ taskId }: CommentsThreadProps) {
       </ul>
 
       {page + 1 < totalPages && (
-        <button
-          type="button"
-          disabled={busy}
-          className="rounded border border-slate-300 px-2 py-0.5 text-xs disabled:opacity-50"
-          onClick={() => void reload(page + 1)}
-        >
+        <Button variant="outline" size="sm" disabled={busy} onClick={() => void reload(page + 1)}>
           Load more
-        </button>
+        </Button>
       )}
 
       {error && <p className="rounded bg-red-100 border border-red-300 p-2 text-xs">{error}</p>}
 
       <div className="flex gap-2 pt-1">
-        <textarea
+        <Textarea
           aria-label="New comment"
           placeholder="Write a comment…"
-          className="min-h-10 flex-1 rounded border border-slate-300 px-2 py-1 text-sm"
+          fieldSize="sm"
+          className="min-h-10 flex-1"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
         />
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="md"
+          className="self-end"
           disabled={busy || !draft.trim()}
-          className="self-end rounded bg-slate-700 px-3 py-1 text-sm text-white disabled:opacity-50"
           onClick={() => void submit()}
         >
           Comment
-        </button>
+        </Button>
       </div>
     </div>
   );

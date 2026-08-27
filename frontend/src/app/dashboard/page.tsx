@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { LogOut } from "lucide-react";
 import { currentUserSafe, logout } from "@/lib/auth";
 import { get, post } from "@/lib/api";
+import { Button, Input } from "@/components/ui";
 import NotificationBell from "@/components/notification/NotificationBell";
 import type { ApiPage, Project, User } from "@/types";
 
@@ -51,28 +53,30 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3">
           <NotificationBell />
           <span className="text-sm text-slate-600">{user?.name}</span>
-          <button className="rounded border border-slate-300 px-3 py-1 text-sm" onClick={handleLogout}>
-            Log out
-          </button>
+          <Button variant="outline" size="md" onClick={handleLogout}>
+            <LogOut size={14} aria-hidden="true" /> Log out
+          </Button>
         </div>
       </header>
 
       <form onSubmit={createProject} className="mb-6 rounded-lg border border-slate-300 bg-white p-4 flex gap-2">
-        <input
-          className="flex-1 rounded border border-slate-300 px-2 py-2"
+        <Input
+          fieldSize="lg"
+          className="flex-1"
           placeholder="New project name"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
-        <input
-          className="flex-1 rounded border border-slate-300 px-2 py-2"
+        <Input
+          fieldSize="lg"
+          className="flex-1"
           placeholder="Description (optional)"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
-        <button className="rounded bg-slate-700 px-4 py-2 text-white" type="submit">
+        <Button variant="primary" size="md" type="submit">
           Create
-        </button>
+        </Button>
       </form>
 
       {projects.length === 0 ? (

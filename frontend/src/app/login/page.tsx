@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { login, register } from "@/lib/auth";
+import { Button, Input } from "@/components/ui";
 
 type Mode = "login" | "register";
 
@@ -50,23 +51,26 @@ export default function LoginPage() {
         </div>
         <form onSubmit={submit} className="flex flex-col gap-2">
           {mode === "register" && (
-            <input
-              className="rounded border border-slate-300 px-2 py-2"
+            <Input
+              fieldSize="lg"
+              className="w-full"
               placeholder="Name"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
           )}
-          <input
-            className="rounded border border-slate-300 px-2 py-2"
+          <Input
+            fieldSize="lg"
+            className="w-full"
             type="email"
             required
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          <input
-            className="rounded border border-slate-300 px-2 py-2"
+          <Input
+            fieldSize="lg"
+            className="w-full"
             type="password"
             required
             placeholder="Password"
@@ -74,9 +78,9 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
           />
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <button className="rounded bg-slate-700 py-2 text-white" type="submit">
+          <Button variant="primary" size="md" type="submit">
             {mode === "login" ? "Log in" : "Create account"}
-          </button>
+          </Button>
         </form>
       </div>
     </main>

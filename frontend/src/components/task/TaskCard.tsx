@@ -1,12 +1,14 @@
 "use client";
 
 import type { TaskCard } from "@/types";
+import { Badge } from "@/components/ui";
 
-const PRIORITY_COLORS: Record<string, string> = {
-  HIGH: "bg-red-200 text-red-800",
-  MEDIUM: "bg-amber-200 text-amber-800",
-  LOW: "bg-green-200 text-green-800",
-  CRITICAL: "bg-rose-300 text-rose-900"
+/** Maps backend priority enums onto the shared design-token status palette. */
+const PRIORITY_TONES: Record<string, "low" | "medium" | "high" | "critical"> = {
+  LOW: "low",
+  MEDIUM: "medium",
+  HIGH: "high",
+  CRITICAL: "critical"
 };
 
 interface TaskCardProps {
@@ -32,11 +34,7 @@ export default function TaskCard({ task, onSelect }: TaskCardProps) {
       <div className="flex items-start justify-between gap-2">
         <p className="font-medium text-slate-800">{titleButton}</p>
         {task.priority && (
-          <span
-            className={"inline-block rounded px-1.5 py-0.5 text-xs " + (PRIORITY_COLORS[priority] ?? "bg-slate-200")}
-          >
-            {task.priority}
-          </span>
+          <Badge tone={PRIORITY_TONES[priority] ?? "none"}>{task.priority}</Badge>
         )}
       </div>
       {task.labels?.length > 0 && (

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { listActivity } from "@/lib/actions";
 import { realtime } from "@/lib/websocket";
 import { relativeTime } from "@/lib/time";
+import { Button } from "@/components/ui";
 import type { Activity } from "@/types";
 
 interface ActivityPanelProps {
@@ -73,13 +74,9 @@ export default function ActivityPanel({ projectId }: ActivityPanelProps) {
           </ul>
 
           {page + 1 < totalPages && (
-            <button
-              type="button"
-              className="mt-2 rounded border border-slate-300 px-2 py-0.5 text-xs disabled:opacity-50"
-              onClick={() => void load(page + 1)}
-            >
+            <Button variant="outline" size="sm" className="mt-2" onClick={() => void load(page + 1)}>
               Load more
-            </button>
+            </Button>
           )}
 
           {error && <p className="mt-2 rounded bg-red-100 border border-red-300 p-2 text-xs">{error}</p>}

@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { X } from "lucide-react";
+import Button from "./Button";
 
 // Focusable selectors for trap/tab handling.
 const FOCUSABLE =
@@ -88,14 +90,9 @@ export default function Modal({ open, onClose, title, children, widthClass = "ma
       >
         <div className="mb-3 flex items-start justify-between gap-4">
           {title != null && <h2 className="text-lg font-semibold text-slate-800">{title}</h2>}
-          <button
-            type="button"
-            aria-label="Close dialog"
-            className="rounded px-2 py-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-            onClick={onClose}
-          >
-            ✕
-          </button>
+          <Button variant="ghost" aria-label="Close dialog" onClick={onClose}>
+            <X size={16} aria-hidden="true" />
+          </Button>
         </div>
         {children}
       </div>

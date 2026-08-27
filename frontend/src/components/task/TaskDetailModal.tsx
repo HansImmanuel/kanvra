@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Modal, LabelChip, Select } from "@/components/ui";
+import { Button, Input, LabelChip, Modal, Select, Textarea } from "@/components/ui";
 import { getTask, updateTask, listMembers, listProjectLabels } from "@/lib/actions";
 import { ApiError } from "@/lib/api";
 import { noteLocalEventId } from "@/lib/websocket";
@@ -142,23 +142,19 @@ export default function TaskDetailModal({
         <p className="text-slate-500">Loading…</p>
       ) : (
         <div className="space-y-3">
-          <label className="block text-sm">
-            <span className="mb-1 block font-medium text-slate-600">Title</span>
-            <input
-              className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </label>
+          <Input
+            label="Title"
+            className="w-full"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
 
-          <label className="block text-sm">
-            <span className="mb-1 block font-medium text-slate-600">Description</span>
-            <textarea
-              className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm min-h-16"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </label>
+          <Textarea
+            label="Description"
+            className="w-full min-h-16"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
 
           <div className="grid grid-cols-2 gap-3">
             <label className="block text-sm">
@@ -175,15 +171,13 @@ export default function TaskDetailModal({
               </select>
             </label>
 
-            <label className="block text-sm">
-              <span className="mb-1 block font-medium text-slate-600">Due date</span>
-              <input
-                type="date"
-                className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-              />
-            </label>
+            <Input
+              type="date"
+              label="Due date"
+              className="w-full"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -194,15 +188,13 @@ export default function TaskDetailModal({
               placeholder="Unassigned"
               options={members.map((m) => ({ value: String(m.id), label: m.name }))}
             />
-            <label className="block text-sm">
-              <span className="mb-1 block font-medium text-slate-600">Due date</span>
-              <input
-                type="date"
-                className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-              />
-            </label>
+            <Input
+              type="date"
+              label="Due date"
+              className="w-full"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+            />
           </div>
 
           <div className="text-sm">
@@ -243,21 +235,12 @@ export default function TaskDetailModal({
           <div className="flex items-center justify-between pt-2">
             <span className="text-xs text-slate-400">version {version}</span>
             <div className="flex gap-2">
-              <button
-                type="button"
-                className="rounded border border-slate-300 px-3 py-1 text-sm"
-                onClick={onClose}
-              >
+              <Button variant="outline" size="md" onClick={onClose}>
                 Close
-              </button>
-              <button
-                type="button"
-                disabled={saving}
-                className="rounded bg-slate-700 px-3 py-1 text-sm text-white disabled:opacity-50"
-                onClick={() => void save()}
-              >
+              </Button>
+              <Button variant="primary" size="md" disabled={saving} onClick={() => void save()}>
                 {saving ? "Saving…" : "Save"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

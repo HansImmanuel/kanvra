@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ChevronRight } from "lucide-react";
 import { getProjectAnalytics } from "@/lib/actions";
 import { realtime } from "@/lib/websocket";
+import { colors } from "@/lib/design-tokens";
 import type { ProjectAnalytics } from "@/types";
 
 interface AnalyticsPanelProps {
@@ -59,7 +61,9 @@ export default function AnalyticsPanel({ projectId }: AnalyticsPanelProps) {
           aria-expanded={open}
           onClick={() => setOpen((prev) => !prev)}
         >
-          <span className={open ? "rotate-90 inline-block transition-transform" : "inline-block transition-transform"}>▶</span>
+          <span className={open ? "rotate-90 inline-block transition-transform" : "inline-block transition-transform"}>
+            <ChevronRight size={14} aria-hidden="true" />
+          </span>
           Analytics
         </button>
       </h2>
@@ -91,8 +95,11 @@ export default function AnalyticsPanel({ projectId }: AnalyticsPanelProps) {
                     <span className="w-28 shrink-0 truncate text-slate-700">{col.columnName}</span>
                     <span className="h-2 flex-1 overflow-hidden rounded bg-slate-100">
                       <span
-                        className="block h-full bg-blue-500"
-                        style={{ width: barWidth(col.count, maxCount(analytics)) }}
+                        className="block h-full"
+                        style={{
+                          width: barWidth(col.count, maxCount(analytics)),
+                          backgroundColor: colors.chartBar
+                        }}
                       />
                     </span>
                     <span className="w-6 shrink-0 text-right text-xs text-slate-500">{col.count}</span>

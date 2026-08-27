@@ -5,6 +5,17 @@ import { post, ApiError } from "@/lib/api";
 import { realtime, noteLocalEventId } from "@/lib/websocket";
 import TaskCard from "@/components/task/TaskCard";
 import TaskDetailModal from "@/components/task/TaskDetailModal";
+import { Button, Input } from "@/components/ui";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+  Trash2,
+  X
+} from "lucide-react";
 import { createColumn, deleteColumn, renameColumn, reorderColumns } from "@/lib/actions";
 import type { BoardDetail, ColumnDetail, TaskCard as TaskCardType, TaskResponse } from "@/types";
 
@@ -271,14 +282,14 @@ export default function Board({ board, onReload }: BoardProps) {
                     onChange={(e) => setRenameValue(e.target.value)}
                   />
                   <button type="submit" aria-label="Save column name" disabled={busy} className="text-xs">
-                    ✓
+                    <Check size={14} aria-hidden="true" />
                   </button>
                   <button
                     type="button"
                     aria-label={`Cancel renaming ${column.name}`}
                     onClick={() => setRenamingColumnId(null)}
                   >
-                    ✕
+                    <X size={14} aria-hidden="true" />
                   </button>
                 </form>
               ) : (
@@ -292,7 +303,7 @@ export default function Board({ board, onReload }: BoardProps) {
                       className="px-1 hover:text-slate-800 disabled:opacity-30"
                       onClick={() => void shiftColumn(column.id, -1)}
                     >
-                      ‹
+                      <ChevronLeft size={14} aria-hidden="true" />
                     </button>
                     <button
                       type="button"
@@ -301,7 +312,7 @@ export default function Board({ board, onReload }: BoardProps) {
                       className="px-1 hover:text-slate-800 disabled:opacity-30"
                       onClick={() => void shiftColumn(column.id, 1)}
                     >
-                      ›
+                      <ChevronRight size={14} aria-hidden="true" />
                     </button>
                     <button
                       type="button"
@@ -312,7 +323,7 @@ export default function Board({ board, onReload }: BoardProps) {
                         setRenameValue(column.name);
                       }}
                     >
-                      ✎
+                      <Pencil size={13} aria-hidden="true" />
                     </button>
                     <button
                       type="button"
@@ -324,7 +335,7 @@ export default function Board({ board, onReload }: BoardProps) {
                         setDeleteTargetId("");
                       }}
                     >
-                      🗑
+                      <Trash2 size={13} aria-hidden="true" />
                     </button>
                   </span>
                 </div>
@@ -356,21 +367,17 @@ export default function Board({ board, onReload }: BoardProps) {
                   </label>
                 )}
                 <div className="mt-1 flex gap-2">
-                  <button
-                    type="button"
+                  <Button
+                    variant="danger"
+                    size="sm"
                     disabled={busy || (column.tasks.length > 0 && deleteTargetId === "")}
-                    className="rounded bg-red-600 px-2 py-0.5 text-white disabled:opacity-40"
                     onClick={() => void submitDeleteColumn()}
                   >
                     Confirm delete
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded border border-slate-300 px-2 py-0.5"
-                    onClick={() => setDeletingColumnId(null)}
-                  >
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setDeletingColumnId(null)}>
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -384,7 +391,7 @@ export default function Board({ board, onReload }: BoardProps) {
                     onClick={() => moveTask(task, prevCol.id, 0)}
                     aria-label={`move ${task.title} to ${prevCol.name}`}
                   >
-                    ←
+                    <ArrowLeft size={14} aria-hidden="true" />
                   </button>
                 )}
                 <TaskCard
@@ -398,14 +405,16 @@ export default function Board({ board, onReload }: BoardProps) {
                     onClick={() => moveTask(task, nextCol.id, appendPos(nextCol.id))}
                     aria-label={`move ${task.title} to ${nextCol.name}`}
                   >
-                    →
+                    <ArrowRight size={14} aria-hidden="true" />
                   </button>
                 )}
               </div>
             ))}
             <div className="mt-1">
-              <input
-                className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+              <Input
+                fieldSize="sm"
+                className="w-full"
+                aria-label={`Add a card to ${column.name}`}
                 placeholder="Add a card"
                 value={titles[column.id] ?? ""}
                 onChange={(e) => setTitles((t) => ({ ...t, [column.id]: e.target.value }))}
@@ -413,13 +422,15 @@ export default function Board({ board, onReload }: BoardProps) {
                   if (e.key === "Enter") void createTask(column.id);
                 }}
               />
-              <button
-                className="mt-1 w-full rounded bg-slate-700 px-2 py-1 text-sm text-white"
+              <Button
+                variant="primary"
+                size="compact"
+                className="mt-1 w-full"
                 disabled={busy}
                 onClick={() => void createTask(column.id)}
               >
                 + Add
-              </button>
+              </Button>
             </div>
           </div>
         );
@@ -435,42 +446,40 @@ export default function Board({ board, onReload }: BoardProps) {
             }}
             className="space-y-2 rounded bg-slate-100 p-3"
           >
-            <input
+            <Input
+              fieldSize="sm"
+              className="w-full"
               aria-label="New column name"
               autoFocus
               placeholder="New column name"
-              className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
               value={newColumnName}
               onChange={(e) => setNewColumnName(e.target.value)}
             />
             <div className="flex gap-2">
-              <button
+              <Button
                 type="submit"
+                variant="primary"
+                size="compact"
                 disabled={busy || !newColumnName.trim()}
-                className="rounded bg-slate-700 px-2 py-1 text-sm text-white disabled:opacity-50"
               >
                 Create column
-              </button>
-              <button
-                type="button"
-                className="rounded border border-slate-300 px-2 py-1 text-sm"
+              </Button>
+              <Button
+                variant="outline"
+                size="compact"
                 onClick={() => {
                   setAddingColumn(false);
                   setNewColumnName("");
                 }}
               >
                 Cancel
-              </button>
+              </Button>
             </div>
           </form>
         ) : (
-          <button
-            type="button"
-            className="rounded border border-dashed border-slate-400 px-3 py-2 text-sm text-slate-500 hover:border-slate-600 hover:text-slate-700"
-            onClick={() => setAddingColumn(true)}
-          >
+          <Button variant="dashed" onClick={() => setAddingColumn(true)}>
             + Add column
-          </button>
+          </Button>
         )}
       </div>
 
