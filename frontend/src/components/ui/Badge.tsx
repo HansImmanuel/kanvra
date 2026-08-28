@@ -1,5 +1,3 @@
-"use client";
-
 import type { ReactNode } from "react";
 import { colors, type StatusTone } from "@/lib/design-tokens";
 
@@ -13,17 +11,24 @@ type BadgeTone = StatusTone;
 
 interface BadgeProps {
   tone?: BadgeTone;
+  /** Optional leading glyph (e.g. a priority-direction arrow). Decorative. */
+  icon?: ReactNode;
   children: ReactNode;
   className?: string;
 }
 
-export default function Badge({ tone = "none", children, className = "" }: BadgeProps) {
+export default function Badge({ tone = "none", icon, children, className = "" }: BadgeProps) {
   const { fg, bg } = colors.status[tone];
   return (
     <span
-      className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium select-none ${className}`.trim()}
+      className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium select-none ${className}`.trim()}
       style={{ backgroundColor: bg, color: fg }}
     >
+      {icon != null && (
+        <span aria-hidden="true" className="-ml-0.5 inline-flex shrink-0">
+          {icon}
+        </span>
+      )}
       {children}
     </span>
   );

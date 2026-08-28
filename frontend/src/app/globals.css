@@ -21,6 +21,17 @@
   /* Feedback */
   --color-danger: #dc2626;
 
+  /* Semantic text ladder (mirrors design-tokens.ts text scale) */
+  --color-heading: #1e293b;       /* ts: colors.text */
+  --color-body: #334155;          /* ts: colors.textBody */
+  --color-dim: #475569;           /* ts: colors.textSecondary */
+  --color-muted: #64748b;         /* ts: colors.muted */
+  --color-faint: #94a3b8;         /* ts: colors.faint */
+
+  /* Positive / caution accents */
+  --color-positive: #16a34a;      /* ts: colors.success */
+  --color-caution: #d97706;       /* ts: colors.warning */
+
   /* Radius scale */
   --radius-field: 0.25rem;
   --radius-panel: 0.5rem;
@@ -35,3 +46,26 @@
   --spacing-sidebar: 12rem;       /* w-sidebar */
   --spacing-column: 18rem;        /* w-column */
 }
+
+/*
+ * Motion primitives (phase 4). Keyframes live inside the reduced-motion media
+ * query so users who opt out get instant appearance/disappearance.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes kv-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes kv-fade-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+  @keyframes kv-pop-in {
+    from { opacity: 0; transform: translateY(4px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .animate-kv-fade-in { animation: kv-fade-in 140ms ease-out both; }
+  .animate-kv-fade-out { animation: kv-fade-out 120ms ease-in both; }
+  .animate-kv-pop-in { animation: kv-pop-in 150ms ease-out both; }
+}
+

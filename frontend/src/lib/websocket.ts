@@ -44,6 +44,8 @@ export class RealtimeService {
   private listeners = new Set<RealtimeListener>();
   private resyncCallbacks = new Set<() => void>();
   private ownEventIds = new Set<string>();
+  private statusListeners = new Set<(up: boolean) => void>();
+  private lastStatus: boolean | null = null;
 
   private wsDownSince = 0;
   private fallbackTimer: ReturnType<typeof setInterval> | null = null;
@@ -66,6 +68,21 @@ export class RealtimeService {
 
   offResync(callback: () => void): void {
     this.resyncCallbacks.delete(callback);
+  }
+
+  /** Subscribe to coarse connection status changes (true = live). Additive. */
+  onStatusChange(cb: (up: boolean) => void): void {
+    this.statusListeners.add(cb);
+  }
+
+  offStatusChange(cb: (up: boolean) => void): void {
+    this.statusListeners.delete(cb);
+  }
+
+  private setStatus(up: boolean): void {
+    if (this.lastStatus === up) return;
+    this.lastStatus = up;
+    for (const cb of this.statusListeners) cb(up);
   }
 
   /** Records a local mutation eventId so its echo is dropped. */
@@ -122,20 +139,24 @@ export class RealtimeService {
       });
       // Fire resync: delivery has no replay guarantee, so always re-fetch.
       this.resyncCallbacks.forEach((cb) => cb());
+      this.setStatus(true);
     };
 
     this.client.onDisconnect = () => {
       this.connected = false;
+      this.setStatus(false);
       this.possiblyEnterFallback();
     };
 
     this.client.onWebSocketClose = () => {
       this.connected = false;
+      this.setStatus(false);
       this.possiblyEnterFallback();
     };
 
     this.client.onWebSocketError = () => {
       this.connected = false;
+      this.setStatus(false);
       this.possiblyEnterFallback();
     };
 
@@ -154,6 +175,7 @@ export class RealtimeService {
     }
 
     this.fallbackPolling = true;
+    this.setStatus(false);
     this.resyncCallbacks.forEach((cb) => cb()); // first authoritative re-fetch
 
     this.fallbackTimer = setInterval(() => {

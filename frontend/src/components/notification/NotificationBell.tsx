@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Bell } from "lucide-react";
 import { listNotifications, markAllNotificationsRead, markNotificationRead } from "@/lib/actions";
 import { realtime } from "@/lib/websocket";
 import { relativeTime } from "@/lib/time";
+import { Button, Tooltip } from "@/components/ui";
 import type { Notification } from "@/types";
 
 /**
@@ -55,6 +57,16 @@ export default function NotificationBell() {
     return () => document.removeEventListener("mousedown", onClick);
   }, [open]);
 
+  // Close on Escape (keyboard parity with the modal surfaces).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
   const unread = items.filter((n) => !n.readAt).length;
 
   const openItem = async (n: Notification) => {
@@ -83,44 +95,45 @@ export default function NotificationBell() {
 
   return (
     <div className="relative" ref={wrapRef}>
-      <button
-        type="button"
-        aria-label={`Notifications${unread ? ` (${unread} unread)` : ""}`}
-        aria-expanded={open}
-        className="relative rounded px-2 py-1 text-lg hover:bg-slate-100"
-        onClick={() => setOpen((v) => !v)}
-      >
-        🔔
-        {unread > 0 && (
-          <span
-            data-testid="notif-badge"
-            className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold text-white"
-          >
-            {unread}
-          </span>
-        )}
-      </button>
+      <Tooltip label="Notifications">
+        <button
+          type="button"
+          aria-label={`Notifications${unread ? ` (${unread} unread)` : ""}`}
+          aria-expanded={open}
+          className="relative flex size-9 items-center justify-center rounded-panel text-body transition-colors hover:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none"
+          onClick={() => setOpen((v) => !v)}
+        >
+          <Bell size={17} aria-hidden="true" />
+          {unread > 0 && (
+            <span
+              data-testid="notif-badge"
+              className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-semibold text-white"
+            >
+              {unread}
+            </span>
+          )}
+        </button>
+      </Tooltip>
 
       {open && (
         <div
           data-testid="notif-panel"
-          className="absolute right-0 z-50 mt-2 w-80 rounded-lg border border-slate-300 bg-white p-2 shadow-xl"
+          className="absolute right-0 z-50 mt-2 w-80 rounded-panel border border-edge bg-surface p-2 shadow-overlay"
         >
-          <div className="mb-1 flex items-center justify-between px-1">
-            <p className="text-sm font-semibold text-slate-700">Notifications</p>
-            <button
-              type="button"
+          <div className="mb-2 flex items-center justify-between border-b border-edge px-1 pb-2">
+            <p className="text-sm font-semibold text-heading">Notifications</p>
+            <Button
+              variant="link"
               disabled={busy || unread === 0}
-              className="rounded px-1 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40"
               onClick={() => void markAll()}
             >
               Mark all read
-            </button>
+            </Button>
           </div>
 
-          <ul className="max-h-80 space-y-1 overflow-y-auto">
+          <ul className="max-h-80 space-y-0.5 overflow-y-auto">
             {items.length === 0 && (
-              <li className="px-2 py-3 text-sm text-slate-400">No notifications yet.</li>
+              <li className="px-2 py-3 text-sm text-muted">No notifications yet.</li>
             )}
             {items.map((n) => (
               <li key={n.id}>
@@ -128,15 +141,17 @@ export default function NotificationBell() {
                   type="button"
                   disabled={busy}
                   className={
-                    "w-full rounded p-2 text-left text-sm hover:bg-slate-50 " +
-                    (n.readAt ? "text-slate-500" : "bg-indigo-50 text-slate-800")
+                    "w-full rounded p-2 text-left text-sm transition-colors hover:bg-elevated focus-visible:outline-2 focus-visible:outline-accent motion-reduce:transition-none disabled:opacity-50 " +
+                    (n.readAt ? "text-muted" : "bg-accent/10 text-body")
                   }
                   onClick={() => void openItem(n)}
                 >
                   <span className="flex items-start gap-2">
-                    {!n.readAt && <span aria-hidden="true" className="mt-1 h-2 w-2 shrink-0 rounded-full bg-indigo-500" />}
+                    {!n.readAt && (
+                      <span aria-hidden="true" className="mt-1 h-2 w-2 shrink-0 rounded-full bg-accent" />
+                    )}
                     <span className="flex-1">{n.message}</span>
-                    <span className="text-xs text-slate-400">{relativeTime(n.createdAt)}</span>
+                    <span className="text-xs text-muted">{relativeTime(n.createdAt)}</span>
                   </span>
                 </button>
               </li>

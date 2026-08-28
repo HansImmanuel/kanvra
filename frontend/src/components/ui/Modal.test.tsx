@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import Modal from "./Modal";
 
 describe("Modal", () => {
@@ -25,7 +25,7 @@ describe("Modal", () => {
     expect(document.activeElement).toBe(dialogEl);
   });
 
-  it("closes on Escape", () => {
+  it("closes on Escape", async () => {
     const onClose = vi.fn();
     render(
       <Modal open onClose={onClose}>
@@ -33,10 +33,11 @@ describe("Modal", () => {
       </Modal>
     );
     fireEvent.keyDown(document, { key: "Escape" });
-    expect(onClose).toHaveBeenCalledTimes(1);
+    // onClose fires after the exit animation (phase 4), so wait for it.
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 
-  it("closes on backdrop click", () => {
+  it("closes on backdrop click", async () => {
     const onClose = vi.fn();
     render(
       <Modal open onClose={onClose}>
@@ -44,7 +45,7 @@ describe("Modal", () => {
       </Modal>
     );
     fireEvent.click(screen.getByTestId("modal-backdrop"));
-    expect(onClose).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 
   it("traps Tab between the first and last focusable elements", () => {

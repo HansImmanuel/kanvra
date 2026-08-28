@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { CircleAlert } from "lucide-react";
 import { Button, Input, Modal, Avatar, LabelChip, Select } from "@/components/ui";
 import { currentUserSafe } from "@/lib/auth";
 import {
@@ -82,20 +83,41 @@ export default function ProjectSettingsPanel({ project, onClose }: ProjectSettin
   return (
     <Modal open onClose={onClose} title={`Settings — ${project.name}`} widthClass="max-w-2xl">
       {loading ? (
-        <p className="text-slate-500">Loading…</p>
+        <p className="text-muted">Loading…</p>
       ) : (
-        <div className="space-y-6">
-          {error && <p className="rounded bg-red-100 border border-red-300 p-2 text-sm">{error}</p>}
+        <div className="space-y-5">
+          {error && (
+            <p
+              role="alert"
+              className="flex items-start gap-2 rounded-panel border border-red-300 bg-red-100 p-2 text-sm text-red-800"
+            >
+              <CircleAlert size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
+              <span className="min-w-0 flex-1">{error}</span>
+            </p>
+          )}
 
           {/* --- Members (SPEC §4) --- */}
-          <section>
-            <h3 className="mb-2 text-sm font-semibold text-slate-700">Members</h3>
+          <section className="border-b border-edge pb-5">
+            <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-heading">
+              Members
+              <span className="rounded-full bg-elevated px-1.5 py-px text-[11px] font-medium text-muted">
+                {members.length}
+              </span>
+            </h3>
             <ul className="space-y-1">
               {members.map((m) => (
                 <li key={m.id} className="flex items-center gap-2 rounded border border-slate-200 bg-slate-50 p-2 text-sm">
                   <Avatar name={m.name} size={22} />
                   <span className="font-medium text-slate-700">{m.name}</span>
-                  <span className="rounded bg-slate-200 px-1.5 text-xs text-slate-600">{m.role}</span>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
+                      m.role === "OWNER"
+                        ? "bg-primary/10 text-primary"
+                        : "bg-surface text-muted border border-edge"
+                    }`}
+                  >
+                    {m.role}
+                  </span>
                   {isOwner && m.id !== project.ownerId && (
                     <Button
                       variant="dangerLink"
@@ -113,7 +135,7 @@ export default function ProjectSettingsPanel({ project, onClose }: ProjectSettin
 
             {isOwner && (
               <form
-                className="mt-2 flex items-end gap-2"
+                className="mt-3 flex flex-wrap items-end gap-2"
                 onSubmit={(e) => {
                   e.preventDefault();
                   if (!newMemberId.trim()) return;
@@ -154,7 +176,12 @@ export default function ProjectSettingsPanel({ project, onClose }: ProjectSettin
 
           {/* --- Labels (SPEC §9) --- */}
           <section>
-            <h3 className="mb-2 text-sm font-semibold text-slate-700">Labels</h3>
+            <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-heading">
+              Labels
+              <span className="rounded-full bg-elevated px-1.5 py-px text-[11px] font-medium text-muted">
+                {labels.length}
+              </span>
+            </h3>
             <ul className="space-y-1">
               {labels.map((l) =>
                 editingId === l.id ? (
@@ -221,7 +248,7 @@ export default function ProjectSettingsPanel({ project, onClose }: ProjectSettin
             </ul>
 
             <form
-              className="mt-2 flex items-end gap-2"
+              className="mt-3 flex flex-wrap items-end gap-2"
               onSubmit={(e) => {
                 e.preventDefault();
                 if (!newLabelName.trim()) return;
@@ -250,7 +277,7 @@ export default function ProjectSettingsPanel({ project, onClose }: ProjectSettin
             </form>
           </section>
 
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-faint">
             Member changes require the project OWNER role; the server enforces this on every request.
           </p>
         </div>

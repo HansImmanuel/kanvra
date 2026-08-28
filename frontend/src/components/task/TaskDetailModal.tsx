@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CircleAlert, CircleCheck, Loader2 } from "lucide-react";
 import { Button, Input, LabelChip, Modal, Select, Textarea } from "@/components/ui";
 import { getTask, updateTask, listMembers, listProjectLabels } from "@/lib/actions";
 import { ApiError } from "@/lib/api";
@@ -141,46 +142,37 @@ export default function TaskDetailModal({
       {loading ? (
         <p className="text-slate-500">Loading…</p>
       ) : (
-        <div className="space-y-3">
-          <Input
-            label="Title"
-            className="w-full"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-
-          <Textarea
-            label="Description"
-            className="w-full min-h-16"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block text-sm">
-              <span className="mb-1 block font-medium text-slate-600">Priority</span>
-              <select
-                className="w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
-                value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-              >
-                <option value="">None</option>
-                {PRIORITIES.map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-            </label>
-
+        <>
+          <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_13rem]">
+          {/* Main column: identity + discussion */}
+          <div className="min-w-0 space-y-3">
             <Input
-              type="date"
-              label="Due date"
+              label="Title"
               className="w-full"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
             />
+
+            <Textarea
+              label="Description"
+              className="w-full min-h-24"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+
+            <CommentsThread taskId={taskId} />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          {/* Meta rail: pickers stack vertically, collapse under the main column on mobile */}
+          <aside className="space-y-3">
+            <Select
+              label="Priority"
+              value={priority}
+              onChange={setPriority}
+              placeholder="None"
+              options={PRIORITIES.map((p) => ({ value: p, label: p }))}
+            />
+
             <Select
               label="Assignee"
               value={assignee}
@@ -188,6 +180,7 @@ export default function TaskDetailModal({
               placeholder="Unassigned"
               options={members.map((m) => ({ value: String(m.id), label: m.name }))}
             />
+
             <Input
               type="date"
               label="Due date"
@@ -195,55 +188,77 @@ export default function TaskDetailModal({
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
             />
-          </div>
 
-          <div className="text-sm">
-            <p className="mb-1 font-medium text-slate-600">Labels</p>
-            {projectLabels.length === 0 ? (
-              <span className="text-slate-400">None available</span>
-            ) : (
-              <div className="flex flex-wrap gap-1">
-                {projectLabels.map((l) => {
-                  const selected = selectedLabelIds.includes(l.id);
-                  return (
-                    <button
-                      key={l.id}
-                      type="button"
-                      aria-pressed={selected}
-                      className={selected ? "" : "opacity-40"}
-                      onClick={() =>
-                        setSelectedLabelIds((ids) =>
-                          ids.includes(l.id) ? ids.filter((id) => id !== l.id) : [...ids, l.id]
-                        )
-                      }
-                    >
-                      <LabelChip name={l.name} color={l.color} />
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          <CommentsThread taskId={taskId} />
-
-          {error && <p className="rounded bg-red-100 border border-red-300 p-2 text-sm">{error}</p>}
-          {notice && !error && (
-            <p className="rounded bg-green-100 border border-green-300 p-2 text-sm">{notice}</p>
-          )}
-
-          <div className="flex items-center justify-between pt-2">
-            <span className="text-xs text-slate-400">version {version}</span>
-            <div className="flex gap-2">
-              <Button variant="outline" size="md" onClick={onClose}>
-                Close
-              </Button>
-              <Button variant="primary" size="md" disabled={saving} onClick={() => void save()}>
-                {saving ? "Saving…" : "Save"}
-              </Button>
+            <div className="text-sm">
+              <p className="mb-1 font-medium text-dim">Labels</p>
+              {projectLabels.length === 0 ? (
+                <span className="text-faint">None available</span>
+              ) : (
+                <div className="flex flex-wrap gap-1">
+                  {projectLabels.map((l) => {
+                    const selected = selectedLabelIds.includes(l.id);
+                    return (
+                      <button
+                        key={l.id}
+                        type="button"
+                        aria-pressed={selected}
+                        className={`rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                          selected ? "" : "opacity-40"
+                        }`}
+                        onClick={() =>
+                          setSelectedLabelIds((ids) =>
+                            ids.includes(l.id) ? ids.filter((id) => id !== l.id) : [...ids, l.id]
+                          )
+                        }
+                      >
+                        <LabelChip name={l.name} color={l.color} />
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
+          </aside>
+        </div>
+
+        {error && (
+          <p
+            role="alert"
+            className="flex items-start gap-2 rounded-panel border border-red-300 bg-red-100 p-2 text-sm text-red-800"
+          >
+            <CircleAlert size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
+            <span className="min-w-0 flex-1">{error}</span>
+          </p>
+        )}
+        {notice && !error && (
+          <p
+            role="status"
+            className="flex items-start gap-2 rounded-panel border border-green-300 bg-green-100 p-2 text-sm text-green-800"
+          >
+            <CircleCheck size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
+            <span className="min-w-0 flex-1">{notice}</span>
+          </p>
+        )}
+
+        <div className="flex items-center justify-between border-t border-edge pt-3">
+          <span className="text-xs text-muted">version {version}</span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="md" onClick={onClose}>
+              Close
+            </Button>
+            <Button variant="primary" size="md" disabled={saving} onClick={() => void save()}>
+              {saving && (
+                <Loader2
+                  size={14}
+                  className="mr-1 inline animate-spin motion-reduce:animate-none"
+                  aria-hidden="true"
+                />
+              )}
+              {saving ? "Saving…" : "Save"}
+            </Button>
           </div>
         </div>
+        </>
       )}
     </Modal>
   );

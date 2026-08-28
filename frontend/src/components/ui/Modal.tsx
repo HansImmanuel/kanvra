@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import Button from "./Button";
@@ -32,19 +32,40 @@ interface ModalProps {
  *
  * Used by the task detail, project-settings, and notification surfaces.
  */
-export default function Modal({ open, onClose, title, children, widthClass = "max-w-lg", backdropBlur = false }: ModalProps) {
+export default function Modal({ open, onClose, title, children, widthClass = "max-w-lg", backdropBlur = true }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<Element | null>(null);
+  // Exit animation: onClose fires only after the fade-out finishes, so the
+  // parent keeps the modal mounted long enough to animate (phase 4).
+  const [closing, setClosing] = useState(false);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
+  const requestClose = useCallback(() => {
+    if (closing) return;
+    setClosing(true);
+    window.setTimeout(() => onCloseRef.current(), 120);
+  }, [closing]);
+
+  // Focus capture on open; focus returns to the opener when the dialog leaves.
   useEffect(() => {
     if (!open) return;
     previouslyFocused.current = document.activeElement;
     dialogRef.current?.focus({ preventScroll: true });
+    return () => {
+      (previouslyFocused.current as HTMLElement | null)?.focus?.();
+    };
+  }, [open]);
 
+  // Keyboard: Escape requests close; Tab is trapped while the dialog is up.
+  useEffect(() => {
+    if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
-        onClose();
+        requestClose();
         return;
       }
       if (e.key !== "Tab") return;
@@ -66,9 +87,8 @@ export default function Modal({ open, onClose, title, children, widthClass = "ma
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      (previouslyFocused.current as HTMLElement | null)?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open, requestClose]);
 
   if (!open) return null;
 
@@ -77,8 +97,10 @@ export default function Modal({ open, onClose, title, children, widthClass = "ma
       <div
         data-testid="modal-backdrop"
         aria-hidden="true"
-        className={`absolute inset-0 bg-slate-900/40 ${backdropBlur ? "backdrop-blur-sm" : ""}`}
-        onClick={onClose}
+        className={`absolute inset-0 bg-slate-900/40 animate-kv-fade-in ${
+          backdropBlur ? "backdrop-blur-sm" : ""
+        } ${closing ? "animate-kv-fade-out" : ""}`}
+        onClick={requestClose}
       />
       <div
         ref={dialogRef}
@@ -86,7 +108,9 @@ export default function Modal({ open, onClose, title, children, widthClass = "ma
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className={`relative w-full ${widthClass} rounded-xl bg-white p-5 shadow-xl outline-none max-h-[90vh] overflow-y-auto`}
+        className={`relative w-full ${widthClass} rounded-xl bg-white p-5 shadow-xl outline-none max-h-[90vh] overflow-y-auto ${
+          closing ? "animate-kv-fade-out" : "animate-kv-pop-in"
+        }`}
       >
         <div className="mb-3 flex items-start justify-between gap-4">
           {title != null && <h2 className="text-lg font-semibold text-slate-800">{title}</h2>}

@@ -1,13 +1,19 @@
 "use client";
 
 import { use, useCallback, useEffect, useRef, useState } from "react";
+import { SquareKanban } from "lucide-react";
+import dynamic from "next/dynamic";
 import { get } from "@/lib/api";
 import Board from "@/components/board/Board";
+import BoardSkeleton from "@/components/board/BoardSkeleton";
 import BoardSwitcher from "@/components/board/BoardSwitcher";
-import ActivityPanel from "@/components/activity/ActivityPanel";
-import { Modal } from "@/components/ui";
+import ConnectionBadge from "@/components/board/ConnectionBadge";
+import { Button, ErrorState, Modal } from "@/components/ui";
 import { createBoard as createBoardAction } from "@/lib/actions";
 import type { BoardDetail, BoardRef } from "@/types";
+
+// On-demand surface inside the board page (phase 10 lazy loading).
+const ActivityPanel = dynamic(() => import("@/components/activity/ActivityPanel"));
 
 /**
  * Project Board page (default landing, docs/PRD.md §7). Renders the Kanban
@@ -24,6 +30,7 @@ export default function ProjectBoardPage({
   const pid = Number(projectId);
 
   const [boards, setBoards] = useState<BoardRef[]>([]);
+  const [boardsLoaded, setBoardsLoaded] = useState(false);
   const [activeBoardId, setActiveBoardId] = useState<number | null>(null);
   const [board, setBoard] = useState<BoardDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -76,6 +83,8 @@ export default function ProjectBoardPage({
       await fetchBoardDetail(target);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load board");
+    } finally {
+      setBoardsLoaded(true);
     }
     // Runs once on mount; user actions drive later refreshes.
   }, [pid, fetchBoardDetail]);
@@ -113,7 +122,7 @@ export default function ProjectBoardPage({
 
   return (
     <div>
-      {boards.length > 0 && (
+      {boardsLoaded && (
         <div className="mb-4">
           <BoardSwitcher
             boards={boards}
@@ -126,21 +135,35 @@ export default function ProjectBoardPage({
       )}
 
       <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 className="text-lg font-semibold text-slate-700">Kanban Board</h2>
-        <button
-          type="button"
-          className="rounded border border-slate-300 px-3 py-1 text-sm text-slate-600 hover:border-slate-500"
-          onClick={() => setShowActivity(true)}
-        >
-          Activity
-        </button>
+        <h2 className="text-lg font-semibold text-heading">Kanban Board</h2>
+        <div className="flex shrink-0 items-center gap-2">
+          <ConnectionBadge />
+          <Button variant="outline" size="compact" onClick={() => setShowActivity(true)}>
+            Activity
+          </Button>
+        </div>
       </div>
 
-      {error && <p className="rounded bg-red-100 border border-red-300 p-3 text-sm">{error}</p>}
+      {error && <ErrorState message={error} onRetry={() => void load()} className="mb-4" />}
       {board ? (
         <Board board={board} onReload={() => void reloadActiveBoard()} />
       ) : !error ? (
-        <p className="text-slate-500">Loading board…</p>
+        boardsLoaded && boards.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 rounded-panel border border-dashed border-edge px-6 py-12 text-center">
+            <span
+              aria-hidden="true"
+              className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary"
+            >
+              <SquareKanban size={18} aria-hidden="true" />
+            </span>
+            <p className="text-sm font-medium text-heading">No boards yet</p>
+            <p className="max-w-56 text-xs text-faint">
+              Create your first board with the field above to start adding tasks.
+            </p>
+          </div>
+        ) : (
+          <BoardSkeleton />
+        )
       ) : null}
 
       {showActivity && (

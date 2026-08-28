@@ -1,19 +1,16 @@
-"use client";
-
-import { use } from "react";
 import AnalyticsPanel from "@/components/analytics/AnalyticsPanel";
 
 /**
- * Project Analytics page (docs/SPEC.md §12.5). The Analytics panel now lives on
- * its own route instead of underneath the Kanban board; the backend endpoint and
- * the analytics pipeline are unchanged.
+ * Project Analytics page (docs/SPEC.md §12.5). Server Component: it only
+ * unwraps the route param and hands it to the client analytics panel — no
+ * client boundary needed at the page level (phase 10).
  */
-export default function ProjectAnalyticsPage({
+export default async function ProjectAnalyticsPage({
   params
 }: {
   params: Promise<{ projectId: string }>;
 }) {
-  const { projectId } = use(params);
+  const { projectId } = await params;
   const pid = Number(projectId);
 
   return (

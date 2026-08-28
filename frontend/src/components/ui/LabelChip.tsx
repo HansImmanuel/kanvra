@@ -1,5 +1,3 @@
-"use client";
-
 /**
  * Colored pill for a project label. Colors arrive as hex (`#RRGGBB`) from the
  * backend, so the chip renders with inline styles: a translucent tint fill, the
