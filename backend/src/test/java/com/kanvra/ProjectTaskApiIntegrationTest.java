@@ -245,12 +245,12 @@ class ProjectTaskApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isCreated());
 
         long taskA = idOf(createColumnTask(columnA, "Task A", "uuid-cc-a", owner));
-        long taskB = idOf(createColumnTask(columnB, "Task B", "uuid-cc-b", owner));
+        long taskBId = idOf(createColumnTask(columnB, "Task B", "uuid-cc-b", owner));
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
             Future<Integer> moveA = pool.submit(() -> moveStatusCode(taskA, columnB, owner));
-            Future<Integer> moveB = pool.submit(() -> moveStatusCode(taskB, columnA, mover));
+            Future<Integer> moveB = pool.submit(() -> moveStatusCode(taskBId, columnA, mover));
 
             int statusA = moveA.get(45, TimeUnit.SECONDS);
             int statusB = moveB.get(45, TimeUnit.SECONDS);
@@ -282,7 +282,7 @@ class ProjectTaskApiIntegrationTest extends AbstractIntegrationTest {
         long columnId = columnId(boardId, 0, owner);
 
         long taskA = idOf(createColumnTask(columnId, "Task A", "uuid-dense-a", owner));
-        long taskB = idOf(createColumnTask(columnId, "Task B", "uuid-dense-b", owner));
+        createColumnTask(columnId, "Task B", "uuid-dense-b", owner); // seeds column; ID not needed
         long taskC = idOf(createColumnTask(columnId, "Task C", "uuid-dense-c", owner));
 
         ExecutorService pool = Executors.newFixedThreadPool(2);

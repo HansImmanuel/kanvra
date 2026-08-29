@@ -100,7 +100,7 @@ export default function ProjectLayout({
           >
             <span
               aria-hidden="true"
-              className="flex size-6 shrink-0 items-center justify-center rounded-[6px] bg-primary text-[11px] font-bold text-white"
+              className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary text-[11px] font-bold text-white"
             >
               K
             </span>
@@ -125,7 +125,7 @@ export default function ProjectLayout({
         <div className="flex justify-center border-b border-edge py-3 md:hidden">
           <span
             aria-hidden="true"
-            className="flex size-7 items-center justify-center rounded-[6px] bg-primary text-[11px] font-bold text-white"
+            className="flex size-7 items-center justify-center rounded-md bg-primary text-[11px] font-bold text-white"
           >
             K
           </span>
@@ -145,7 +145,7 @@ export default function ProjectLayout({
                   className={
                     "flex items-center justify-center gap-2.5 rounded-panel px-2.5 py-2 " +
                     "text-sm transition-colors duration-150 motion-reduce:transition-none " +
-                    "md:justify-start focus-visible:outline-offset-[-2px] " +
+                    "md:justify-start focus-visible:-outline-offset-2 " +
                     (active
                       ? "bg-primary/10 font-medium text-body"
                       : "text-dim hover:bg-primary/5 hover:text-body") +

@@ -14,7 +14,7 @@ public record RealtimeMessage(String type, String eventId, Long projectId, Map<S
 
     public static RealtimeMessage from(String eventType, String eventId, Long projectId, JsonNode payload) {
         Map<String, Object> flat = new LinkedHashMap<>();
-        payload.fields().forEachRemaining(e -> flat.put(e.getKey(), e.getValue()));
+        payload.properties().forEach(e -> flat.put(e.getKey(), e.getValue()));
         return new RealtimeMessage(toRealtimeType(eventType), eventId, projectId, flat);
     }
 

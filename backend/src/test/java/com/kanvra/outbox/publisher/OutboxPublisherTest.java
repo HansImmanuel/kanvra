@@ -82,6 +82,7 @@ class OutboxPublisherTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void clearedBackoffResumesPublishingAndMarksRows() {
         when(repository.findTop100ByPublishedAtIsNullOrderByIdAsc()).thenReturn(List.of(row()));
         when(kafkaTemplate.send(anyString(), anyString(), anyString()))
