@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/* Explicit source declaration (Tailwind v4). Automatic content detection uses
+ * the git repository root as its scan base, which does not exist inside the
+ * Docker build context (no .git is copied), and the scanner then finds no
+ * utilities at all — the shipped CSS ends up theme-variables-only and the app
+ * renders unstyled. Pointing at ../ (src/) makes detection deterministic in
+ * every environment; it matches what auto-detection does locally.
+ */
+@source "../";
+
 /*
  * Design tokens (Tailwind v4 @theme). Namespaced additions only — no default
  * palette overrides — so every utility already used across the codebase keeps

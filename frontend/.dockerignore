@@ -1,0 +1,11 @@
+node_modules
+.next
+.tsbuildinfo
+nb.log
+# NOTE: postcss.config.mjs and .gitignore must NOT be excluded here —
+# postcss.config.mjs is required for the Tailwind build, and Tailwind v4
+# source detection reads .gitignore for its ignore rules.
+eslint.config.mjs
+vitest.config.ts
+src/**/*.test.*
+src/**/__tests__

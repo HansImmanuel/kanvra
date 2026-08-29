@@ -59,7 +59,7 @@ jobs:
         run: npm run build
 
   docker:
-    name: Backend Docker image build
+    name: Docker image builds
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -74,3 +74,10 @@ jobs:
           context: backend
           push: false
           tags: kanvra-backend:latest
+
+      - name: Build frontend image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          push: false
+          tags: kanvra-frontend:latest

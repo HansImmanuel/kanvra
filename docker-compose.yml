@@ -29,8 +29,11 @@ services:
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
       # Dual-listener setup (code-review fix): INTERNAL is used by in-network
-      # containers (kafka-ui), EXTERNAL by host-side clients (the Spring Boot
-      # app on localhost). A single advertised listener breaks one side.
+      # containers (backend, kafka-ui), EXTERNAL by host-side clients (a
+      # backend running on the host, CLI tools). A single advertised listener
+      # breaks one side. Note the backend must use INTERNAL (kafka:9092):
+      # EXTERNAL advertises localhost:29092, which is unreachable from a
+      # container and would send all consumers into a coordinator retry loop.
       KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,CONTROLLER://localhost:9093,EXTERNAL://0.0.0.0:29092
       KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:29092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
@@ -70,7 +73,11 @@ services:
       KANVRA_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-kanvra}
       KANVRA_DB_USERNAME: ${POSTGRES_USER:-kanvra}
       KANVRA_DB_PASSWORD: ${POSTGRES_PASSWORD:-kanvra_dev}
-      KANVRA_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      # INTERNAL listener (advertised as kafka:9092): in-network containers must
+      # NOT use the EXTERNAL port (29092), whose advertised address is
+      # localhost:29092 — correct for host-side clients only. See the kafka
+      # service comment above and TECH_DOC §9 (Broker Mode).
+      KANVRA_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KANVRA_JWT_SECRET: ${KANVRA_JWT_SECRET:-dev-only-change-me-in-prod-base64-secret}
       KANVRA_CORS_ORIGINS: ${KANVRA_CORS_ORIGINS:-http://localhost:3000}
       KANVRA_COOKIES_SECURE: ${KANVRA_COOKIES_SECURE:-false}
@@ -87,6 +94,50 @@ services:
       timeout: 5s
       retries: 10
       start_period: 40s
+
+  # Next.js frontend (TECH_DOC §21): /api/* is proxied server-side to the backend
+  # so session cookies stay same-origin. Both KANVRA_BACKEND_URL (rewrite target,
+  # baked into routes-manifest.json) and NEXT_PUBLIC_WS_URL (client bundle) are
+  # BUILD-time values — compose passes them as build args; changing them
+  # requires `docker compose up -d --build frontend`.
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://localhost:8080/ws}
+        KANVRA_BACKEND_URL: ${KANVRA_BACKEND_URL:-http://backend:8080}
+    container_name: kanvra-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/ >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # Optional prod-shaped single-origin gateway: nginx serves the frontend and
+  # reverse-proxies /api and /ws to the backend, so cookies and the WebSocket
+  # are same-origin on http://localhost with no baked-in URLs.
+  # Enable with: docker compose --profile gateway up -d
+  gateway:
+    image: nginx:1.27-alpine
+    container_name: kanvra-gateway
+    restart: unless-stopped
+    profiles: ["gateway"]
+    ports:
+      - "80:80"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
 
 volumes:
   kanvra-postgres-data:

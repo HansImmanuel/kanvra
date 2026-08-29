@@ -11,6 +11,10 @@ const BACKEND = process.env.KANVRA_BACKEND_URL ?? "http://localhost:8080";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Self-contained server bundle for the Docker image (frontend/Dockerfile):
+  // the runtime stage copies .next/standalone instead of the whole node_modules.
+  // Has no effect on `next dev`.
+  output: "standalone",
   async rewrites() {
     return [
       {

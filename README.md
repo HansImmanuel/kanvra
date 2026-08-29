@@ -87,8 +87,10 @@ This starts:
 - **Kafka UI** on `http://localhost:8081`
 - **Spring Boot backend** on `http://localhost:8080` (built from `backend/Dockerfile`; waits for Postgres/Kafka
   health before starting; `/actuator/health` container healthcheck)
+- **Next.js frontend** on `http://localhost:3000` (built from `frontend/Dockerfile` as a standalone output;
+  waits for the backend health; `/api/*` is proxied to the in-network backend)
 
-The Next.js frontend still runs locally (`npm run dev`) so hot reload works.
+The Next.js frontend can alternatively run locally (`npm run dev`) so hot reload works.
 
 ### 2. Run the backend
 
@@ -155,14 +157,24 @@ Sensitive/non-default settings are supplied through environment variables (see `
   is not hammered while the backlog is retained safely in PostgreSQL.
 - **Real-time fallback**: if the WebSocket endpoint is unreachable for a sustained window, the frontend falls back
   to polling the board REST endpoint (authoritative resync) and periodically re-checks the socket.
-- **Frontend Dockerfile** is not yet provided (applications run locally in dev); the backend image builds in CI
-  so it does not bitrot. Containerizing the Next.js app is deferred per `TECH_DOC.md` §21.
+
+### Full-stack in Docker (optional single-origin gateway)
+
+```bash
+# frontend + backend + infra, browser talks to Next.js on :3000
+docker compose up -d
+
+# prod-shaped single-origin setup on :80 (nginx routes /, /api, /ws — no baked-in URLs)
+docker compose --profile gateway up -d
+```
+
+Both backend and frontend images build in CI (no push) so they do not bitrot.
 
 ## Repository layout
 
 ```text
 backend/    Spring Boot modular monolith
 frontend/   Next.js application (App Router, Tailwind)
-infra/      Docker Compose + container tooling
+infra/      nginx gateway config + container tooling (compose lives at repo root)
 docs/       PRD / SPEC / TECH_DOC / AGENT (source of truth)
 ```
